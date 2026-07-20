@@ -195,6 +195,14 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     final paid = double.tryParse(_paidCtrl.text) ?? 0;
     final balance = (subtotal - paid).clamp(0, double.infinity);
 
+    String customerId = state.customerId;
+    String customerName = state.customerName;
+    if (balance > 0 && customerId.isEmpty) {
+      final walkIn = await svc.ensureWalkInCustomer();
+      customerId = walkIn.id;
+      customerName = walkIn.name;
+    }
+
     final lineItems = state.cart.map((c) {
       final prod = productMap[c.product.id];
       return SaleLineItem(
@@ -210,8 +218,8 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     final sale = Sale(
       id: saleId,
       date: DateTime.now(),
-      customerId: state.customerId,
-      customerName: state.customerName,
+      customerId: customerId,
+      customerName: customerName,
       lineItems: lineItems,
       paid: paid,
       isQuote: isQuote,

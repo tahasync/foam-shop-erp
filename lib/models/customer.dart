@@ -2,12 +2,14 @@ class Customer {
   final String id;
   final String name;
   final String phone;
+  final double baqaya;
   final bool isArchived;
 
   Customer({
     required this.id,
     required this.name,
     this.phone = '',
+    this.baqaya = 0,
     this.isArchived = false,
   });
 
@@ -15,6 +17,7 @@ class Customer {
         'id': id,
         'name': name,
         'phone': phone,
+        'baqaya': baqaya,
         'is_archived': isArchived,
       };
 
@@ -22,14 +25,16 @@ class Customer {
         id: map['id'] as String,
         name: map['name'] as String,
         phone: map['phone'] as String? ?? '',
+        baqaya: (map['baqaya'] as num?)?.toDouble() ?? 0,
         isArchived: map['is_archived'] as bool? ?? false,
       );
 
-  Customer copyWith({String? id, String? name, String? phone, bool? isArchived}) =>
+  Customer copyWith({String? id, String? name, String? phone, double? baqaya, bool? isArchived}) =>
       Customer(
         id: id ?? this.id,
         name: name ?? this.name,
         phone: phone ?? this.phone,
+        baqaya: baqaya ?? this.baqaya,
         isArchived: isArchived ?? this.isArchived,
       );
 }

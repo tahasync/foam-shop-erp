@@ -30,7 +30,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
-    final customersAsync = ref.watch(customersStreamProvider);
+    final customersAsync = ref.watch(customersWithBaqayaProvider);
     final salesAsync = ref.watch(salesStreamProvider);
     final paymentsAsync = ref.watch(paymentsStreamProvider);
 
@@ -84,10 +84,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                 final total = sales
                     .where((s) => s.customerId == c.id && !s.isVoided && !s.isQuote)
                     .fold(0.0, (s, x) => s + x.amount);
-                final recv = payments
-                    .where((p) => p.customerId == c.id)
-                    .fold(0.0, (s, x) => s + x.amountCollected);
-                return (customer: c, outstanding: total - recv, totalDue: total);
+                return (customer: c, outstanding: c.baqaya, totalDue: total);
               }).where((x) => x.outstanding > 0 || _searchQuery.isNotEmpty).toList();
 
               if (withBaqaya.isEmpty) {

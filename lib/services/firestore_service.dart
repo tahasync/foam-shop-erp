@@ -45,6 +45,20 @@ class FirestoreService {
   Future<void> updateCustomer(Customer c) => _customers.doc(c.id).update(c.toMap());
   Future<void> archiveCustomer(String id) => _customers.doc(id).update({'is_archived': true});
   Stream<QuerySnapshot> get customersStream => _customers.where('is_archived', isEqualTo: false).snapshots();
+  Stream<QuerySnapshot> get customersWithBaqayaStream =>
+      _customers.where('baqaya', isGreaterThan: 0).where('is_archived', isEqualTo: false).snapshots();
+
+  static const walkInCustomerId = 'walk_in_customer';
+  Future<Customer> ensureWalkInCustomer() async {
+    final ref = _customers.doc(walkInCustomerId);
+    final snap = await ref.get();
+    if (snap.exists) {
+      return Customer.fromMap(snap.data() as Map<String, dynamic>);
+    }
+    final c = Customer(id: walkInCustomerId, name: 'Walk-in Customer', phone: '');
+    await ref.set(c.toMap());
+    return c;
+  }
 
   // Suppliers
   Future<void> addSupplier(Supplier s) => _suppliers.doc(s.id).set(s.toMap());
@@ -109,6 +123,11 @@ class FirestoreService {
         'transaction_uuid': payment.id,
         'created_at': DateTime.now().toIso8601String(),
       });
+      if (payment.customerId.isNotEmpty) {
+        transaction.update(_customers.doc(payment.customerId), {
+          'baqaya': FieldValue.increment(-payment.amountCollected),
+        });
+      }
     });
   }
 
@@ -134,7 +153,7 @@ class FirestoreService {
     return snap.docs.isNotEmpty;
   }
 
-  // Atomic sale transaction
+  // Atomic sale transaction — also updates customer baqaya
   Future<void> saveSaleTransaction(Sale sale, Map<String, double> deductions) async {
     final exists = await saleExistsByUuid(sale.transactionUuid ?? sale.id);
     if (exists) return;
@@ -152,6 +171,11 @@ class FirestoreService {
         transaction.update(productRef, {'current_stock': currentStock - entry.value});
       }
       transaction.set(saleRef, sale.toMap());
+      if (sale.customerId.isNotEmpty && sale.balance > 0) {
+        transaction.update(_customers.doc(sale.customerId), {
+          'baqaya': FieldValue.increment(sale.balance),
+        });
+      }
     });
   }
 

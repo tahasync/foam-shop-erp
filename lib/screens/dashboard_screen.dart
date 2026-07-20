@@ -20,10 +20,10 @@ class DashboardScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (d) => SafeArea(
           child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 24 + bottom),
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + bottom),
             children: [
-              _Header(),
-              const SizedBox(height: 14),
+              _GreetHeader(),
+              const SizedBox(height: 16),
               TornReceiptCard(
                 label: 'Cash in Hand',
                 amount: 'Rs ${NumberFormat('#,##0').format(d.cashInHand.toInt())}',
@@ -37,9 +37,9 @@ class DashboardScreen extends ConsumerWidget {
                 stubLeft: 'Register slip · today',
                 stubRight: '#0001',
               ),
-              const StitchedDivider(),
+              const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               _StatGrid(d: d),
-              const StitchedDivider(),
+              const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               if (d.lowStockCount > 0)
                 _LowStockAlert(d: d),
             ],
@@ -50,7 +50,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends ConsumerWidget {
+class _GreetHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
@@ -59,30 +59,32 @@ class _Header extends ConsumerWidget {
     final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final dateStr = '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]} ${now.year}';
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: Text('Asif Foam Center', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.01))),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: ac.saleTint, borderRadius: BorderRadius.circular(999)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 6, height: 6,
-                decoration: BoxDecoration(color: AppTheme.sage, shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: AppTheme.sage.withValues(alpha: 0.3), blurRadius: 4, spreadRadius: 2)])),
-            const SizedBox(width: 5),
-            Text('Synced just now', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ac.saleFg)),
-          ]),
-        ),
-        const SizedBox(width: 8),
-        Container(width: 34, height: 34,
-          decoration: BoxDecoration(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: cs.outlineVariant)),
-          child: Icon(Icons.person_rounded, size: 18, color: cs.onSurfaceVariant)),
-      ]),
-      const SizedBox(height: 4),
-      Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Asif Foam Center', style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.01, color: cs.onSurface)),
+          const SizedBox(height: 2),
+          Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: ac.saleTint, borderRadius: BorderRadius.circular(999)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Container(width: 6, height: 6,
+                  decoration: BoxDecoration(color: AppTheme.sage, shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: AppTheme.sage.withValues(alpha: 0.3), blurRadius: 4, spreadRadius: 2)])),
+              const SizedBox(width: 5),
+              Text('Synced just now', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ac.saleFg)),
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(width: 12),
+      Container(width: 34, height: 34,
+        decoration: BoxDecoration(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: cs.outlineVariant)),
+        child: Icon(Icons.person_rounded, size: 18, color: cs.onSurfaceVariant)),
     ]);
   }
 }
@@ -96,26 +98,53 @@ class _StatGrid extends StatelessWidget {
     final ac = AppColors.of(context);
     return Column(children: [
       Row(children: [
-        Expanded(child: _statCard(context, 'Revenue', 'Rs ${d.revenue.toStringAsFixed(0)}', 'Gross: Rs ${d.grossProfit.toStringAsFixed(0)}', Icons.trending_up_rounded, ac.saleTint, ac.saleFg)),
+        Expanded(child: _StatCard(
+          title: 'Revenue', value: 'Rs ${NumberFormat('#,##0').format(d.revenue.toInt())}',
+          sub: 'Gross: Rs ${NumberFormat('#,##0').format(d.grossProfit.toInt())}',
+          icon: Icons.trending_up_rounded, tint: ac.saleTint, iconColor: ac.saleFg)),
         const SizedBox(width: 10),
-        Expanded(child: _statCard(context, 'COGS', 'Rs ${d.cogs.toStringAsFixed(0)}', 'Cost of goods sold', Icons.receipt_rounded, ac.purchaseTint, ac.purchaseFg)),
+        Expanded(child: _StatCard(
+          title: 'COGS', value: 'Rs ${NumberFormat('#,##0').format(d.cogs.toInt())}',
+          sub: 'Cost of goods sold',
+          icon: Icons.receipt_rounded, tint: ac.purchaseTint, iconColor: ac.purchaseFg)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: _statCard(context, 'Gross Profit', 'Rs ${d.grossProfit.toStringAsFixed(0)}', 'Revenue \u2212 COGS', Icons.account_balance_rounded, ac.profitTint, ac.profitFg)),
+        Expanded(child: _StatCard(
+          title: 'Gross Profit', value: 'Rs ${NumberFormat('#,##0').format(d.grossProfit.toInt())}',
+          sub: 'Revenue \u2212 COGS',
+          icon: Icons.account_balance_rounded, tint: ac.profitTint, iconColor: ac.profitFg)),
         const SizedBox(width: 10),
-        Expanded(child: _statCard(context, 'Expenses', 'Rs ${d.totalExpenses.toStringAsFixed(0)}', 'Total kharcha', Icons.trending_down_rounded, ac.expenseTint, ac.expenseFg)),
+        Expanded(child: _StatCard(
+          title: 'Expenses', value: 'Rs ${NumberFormat('#,##0').format(d.totalExpenses.toInt())}',
+          sub: 'Total kharcha',
+          icon: Icons.trending_down_rounded, tint: ac.expenseTint, iconColor: ac.expenseFg)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: _statCard(context, 'Net Profit', 'Rs ${d.netProfit.toStringAsFixed(0)}', 'Margin: ${d.revenue > 0 ? ((d.netProfit / d.revenue) * 100).toStringAsFixed(0) : 0}%', Icons.trending_up_rounded, ac.profitTint, ac.profitFg)),
+        Expanded(child: _StatCard(
+          title: 'Net Profit', value: 'Rs ${NumberFormat('#,##0').format(d.netProfit.toInt())}',
+          sub: 'Margin: ${d.revenue > 0 ? ((d.netProfit / d.revenue) * 100).toStringAsFixed(0) : 0}%',
+          icon: Icons.trending_up_rounded, tint: ac.profitTint, iconColor: ac.profitFg)),
         const SizedBox(width: 10),
-        Expanded(child: _statCard(context, 'Inventory Value', 'Rs ${d.inventoryValue.toStringAsFixed(0)}', '${d.totalProducts} products', Icons.inventory_2_rounded, ac.inventoryTint, ac.inventoryFg)),
+        Expanded(child: _StatCard(
+          title: 'Inventory Value', value: 'Rs ${NumberFormat('#,##0').format(d.inventoryValue.toInt())}',
+          sub: '${d.totalProducts} products',
+          icon: Icons.inventory_2_rounded, tint: ac.inventoryTint, iconColor: ac.inventoryFg)),
       ]),
     ]);
   }
+}
 
-  Widget _statCard(BuildContext context, String title, String value, String sub, IconData icon, Color tint, Color iconColor) {
+class _StatCard extends StatelessWidget {
+  final String title, value, sub;
+  final IconData icon;
+  final Color tint, iconColor;
+  const _StatCard({required this.title, required this.value, required this.sub,
+    required this.icon, required this.tint, required this.iconColor});
+
+  @override
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
     return Container(
@@ -124,15 +153,11 @@ class _StatGrid extends StatelessWidget {
         color: cs.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: cs.outlineVariant),
-        boxShadow: [
-          BoxShadow(color: cs.shadow, blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4),
-          BoxShadow(color: Colors.transparent, offset: Offset.zero, blurRadius: 0, spreadRadius: 0),
-        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(width: 30, height: 30,
             decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(9)),
-            child: Icon(icon, size: 16, color: iconColor)),
+            child: Icon(icon, size: 15, color: iconColor)),
         const SizedBox(height: 10),
         Text(title, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
         const SizedBox(height: 3),
