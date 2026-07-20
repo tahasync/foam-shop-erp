@@ -97,11 +97,11 @@ class SupplierKhataScreen extends ConsumerWidget {
       ])),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () async {
+        FilledButton(onPressed: () {
           if (nc.text.trim().isEmpty) return;
-          final s = ref.read(firestoreServiceProvider);
-          await s.addSupplier(Supplier(id: s.generateId(), name: nc.text.trim(), phone: pc.text.trim()));
-          if (ctx.mounted) Navigator.pop(ctx);
+          final supplier = Supplier(id: ref.read(firestoreServiceProvider).generateId(), name: nc.text.trim(), phone: pc.text.trim());
+          Navigator.of(ctx).pop();
+          ref.read(firestoreServiceProvider).addSupplier(supplier).catchError((_) {});
         }, child: const Text('Save')),
       ],
     )).whenComplete(() { nc.dispose(); pc.dispose(); });
@@ -237,12 +237,13 @@ class _SupDetail extends ConsumerWidget {
       content: SingleChildScrollView(child: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true), keyboardType: TextInputType.number)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () async {
+        FilledButton(onPressed: () {
           final amt = double.tryParse(ctrl.text) ?? 0;
           if (amt <= 0) return;
           final s = ref.read(firestoreServiceProvider);
-          await s.addSupplierPayment(SupplierPayment(id: s.generateId(), date: DateTime.now(), supplierId: supplier.id, amountPaid: amt));
-          if (ctx.mounted) Navigator.pop(ctx);
+          final payment = SupplierPayment(id: s.generateId(), date: DateTime.now(), supplierId: supplier.id, amountPaid: amt);
+          Navigator.of(ctx).pop();
+          s.addSupplierPayment(payment).catchError((_) {});
         }, child: const Text('Pay')),
       ],
     )).whenComplete(() => ctrl.dispose());

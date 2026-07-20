@@ -8,6 +8,8 @@ import '../providers/payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/torn_receipt_card.dart';
+import '../widgets/stitched_divider.dart';
 
 class CustomerKhataScreen extends ConsumerWidget {
   const CustomerKhataScreen({super.key});
@@ -139,86 +141,89 @@ class _CustDetail extends ConsumerWidget {
             ];
             txns.sort((a, b) => b.date.compareTo(a.date));
 
-            return Column(children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                color: ac.expenseTint,
-                child: Column(children: [
-                  Text('Outstanding Baqaya',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.05, color: ac.expenseFg)),
-                  const SizedBox(height: 4),
-                  Text('Rs. ${balance.toStringAsFixed(0)}',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800, fontFeatures: [FontFeature('tnum')], color: ac.expenseFg)),
-                  const SizedBox(height: 12),
-                  SizedBox(
+            final saleCount = cSales.length;
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                Row(children: [
+                  Container(width: 38, height: 38,
+                    decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(12)),
+                    child: Text(customer.name[0].toUpperCase(), textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: ac.inventoryFg))),
+                  const SizedBox(width: 10),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(customer.name, style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800, fontSize: 15)),
+                    Text('${customer.phone.isNotEmpty ? '${customer.phone} · ' : ''}$saleCount sales',
+                        style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
+                  ])),
+                ]),
+                const SizedBox(height: 14),
+                TornReceiptCard(
+                  label: 'Outstanding Baqaya',
+                  amount: 'Rs ${balance.toStringAsFixed(0)}',
+                  gradientStart: AppTheme.terracotta,
+                  gradientEnd: const Color(0xFF8C3324),
+                  stubLeft: 'Customer slip',
+                  stubRight: customer.name,
+                  bottomAction: SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: AppTheme.teal,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 44),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                         elevation: 0,
-                        shadowColor: AppTheme.teal.withValues(alpha: 0.3),
+                        shadowColor: AppTheme.teal.withValues(alpha: 0.32),
                       ),
                       onPressed: () => _collectPayment(context, ref, customer),
-                      icon: const Icon(Icons.payments_rounded, size: 16),
+                      icon: const Icon(Icons.credit_card_rounded, size: 16),
                       label: const Text('Collect Payment', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     ),
                   ),
-                ]),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Transaction History',
-                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, letterSpacing: 0.06, color: cs.onSurfaceVariant)),
                 ),
-              ),
-              Expanded(child: txns.isEmpty
-                  ? Center(child: Text('No transactions', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurface)))
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      itemCount: txns.length,
-                      itemBuilder: (_, i) {
-                        final t = txns[i];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-                          decoration: BoxDecoration(
-                            color: cs.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: cs.outlineVariant),
-                            boxShadow: [BoxShadow(color: cs.shadow, blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4)],
-                          ),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(t.desc,
-                                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: cs.onSurface)),
-                                const SizedBox(height: 1),
-                                Text('${t.date.day}/${t.date.month}/${t.date.year}',
-                                    style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
-                              ]),
-                            ),
-                            Text(
-                              '${t.isSale ? '+' : '-'} Rs. ${t.amount.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                fontFeatures: [FontFeature('tnum')],
-                                color: t.isSale ? ac.expenseFg : ac.profitFg,
-                              ),
-                            ),
-                          ]),
-                        );
-                      },
-                    )),
-            ]);
-          },
+                const StitchedDivider(),
+                Row(children: [
+                  Text('History', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                      letterSpacing: 0.06, color: cs.onSurfaceVariant)),
+                  const Spacer(),
+                ]),
+                const SizedBox(height: 9),
+                if (txns.isEmpty)
+                  Center(child: Padding(padding: const EdgeInsets.symmetric(vertical: 32),
+                    child: Text('No transactions', style: TextStyle(color: cs.onSurfaceVariant))))
+                else
+                  ...txns.map((t) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: cs.outlineVariant),
+                      boxShadow: [BoxShadow(color: cs.shadow, blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4)],
+                    ),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(t.desc, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                        const SizedBox(height: 1),
+                        Text('${t.date.day}/${t.date.month}/${t.date.year}', style: TextStyle(fontSize: 10.5, color: ac.inkFaint)),
+                    ])),
+                    Text(
+                      '${t.isSale ? '+' : '-'} Rs. ${t.amount.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                        color: t.isSale ? ac.expenseFg : ac.profitFg,
+                      ),
+                    ),
+                  ]),
+                )),
+            ],
+          );
+        },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
         ),
@@ -236,14 +241,13 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer) {
     content: SingleChildScrollView(child: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true), keyboardType: TextInputType.number)),
     actions: [
       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-      FilledButton(onPressed: () async {
+      FilledButton(onPressed: () {
         final amt = double.tryParse(ctrl.text) ?? 0;
         if (amt <= 0) return;
         final s = ref.read(firestoreServiceProvider);
-        await s.savePaymentTransaction(Payment(
-            id: s.generateId(), date: DateTime.now(), customerId: customer.id, amountCollected: amt));
-        ref.invalidate(accountingSummaryProvider);
-        if (ctx.mounted) Navigator.pop(ctx);
+        final payment = Payment(id: s.generateId(), date: DateTime.now(), customerId: customer.id, amountCollected: amt);
+        Navigator.of(ctx).pop();
+        s.savePaymentTransaction(payment).then((_) => ref.invalidate(accountingSummaryProvider)).catchError((_) {});
       }, child: const Text('Save')),
     ],
   )).then((_) => ctrl.dispose());

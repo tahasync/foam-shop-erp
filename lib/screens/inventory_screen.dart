@@ -5,8 +5,10 @@ import '../models/supplier.dart';
 import '../providers/product_provider.dart';
 import '../providers/supplier_provider.dart';
 import '../providers/firebase_providers.dart';
+import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/debounce.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -16,10 +18,11 @@ class InventoryScreen extends ConsumerStatefulWidget {
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _searchCtrl = TextEditingController();
+  final _searchDebounce = Debouncer();
   String _typeFilter = 'All';
 
   @override
-  void dispose() { _searchCtrl.dispose(); super.dispose(); }
+  void dispose() { _searchCtrl.dispose(); _searchDebounce.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -29,25 +32,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Inventory')),
-      floatingActionButton: SizedBox(
-        width: 46, height: 46,
-        child: FloatingActionButton(
-          key: const ValueKey('add_product_fab'),
-          backgroundColor: AppTheme.amber,
-          foregroundColor: Colors.white,
-          elevation: 8,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          onPressed: _addProduct,
-          child: const Icon(Icons.add_rounded, size: 22),
-        ),
+      floatingActionButton: FloatingActionButton(
+        key: const ValueKey('add_product_fab'),
+        backgroundColor: AppTheme.amber,
+        foregroundColor: const Color(0xFF2A1A00),
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onPressed: _addProduct,
+        child: const Icon(Icons.add_rounded, size: 22),
       ),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
         data: (products) {
+          final query = _searchCtrl.text.toLowerCase();
           var filtered = products.where((p) {
             if (_typeFilter == 'Low Stock' && !p.isLowStock) return false;
-            if (_searchCtrl.text.isNotEmpty && !p.name.toLowerCase().contains(_searchCtrl.text.toLowerCase())) return false;
+            if (query.isNotEmpty && !p.name.toLowerCase().contains(query)) return false;
             return true;
           }).toList();
 
@@ -71,7 +72,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     border: InputBorder.none,
                     prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.inkFaint),
                   ),
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) => _searchDebounce.call(() => setState(() {})),
                 ),
               ),
             ),
@@ -88,9 +89,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 const SizedBox(width: 8),
                 Text('Total Inventory Value: ',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ac.profitFg)),
-                Text('Rs ${totalValue.toStringAsFixed(0)}',
+                Text('Rs ${NumberFormat('#,##0').format(totalValue.toInt())}',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-                        fontFeatures: [FontFeature('tnum')], color: ac.profitFg)),
+                        fontFeatures: const [FontFeature.tabularFigures()], color: ac.profitFg)),
               ]),
             ),
             const SizedBox(height: 6),
@@ -151,43 +152,39 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _addProduct() {
-    showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _AddProductDialog(
-        onSave: (Product product) async {
-          final svc = ref.read(firestoreServiceProvider);
-          await svc.addProduct(product.copyWith(id: svc.generateId()));
-        },
-      ),
-    );
+    _AddProductDialog.show(context, (Product product) {
+      final svc = ref.read(firestoreServiceProvider);
+      svc.addProduct(product.copyWith(id: svc.generateId())).catchError((_) {});
+    });
   }
 
   void _edit(Product product) {
-    showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _EditProductDialog(
-        product: product,
-        onSave: (Product updated) async {
-          await ref.read(firestoreServiceProvider).updateProduct(updated);
-        },
-      ),
-    );
+    _EditProductDialog.show(context, product, (Product updated) {
+      ref.read(firestoreServiceProvider).updateProduct(updated).catchError((_) {});
+    });
   }
 
   void _restock(Product product) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => RestockDialog(key: const ValueKey('restock_dialog_modal'), product: product),
-    );
+    RestockDialog.show(context, product);
   }
 }
 
 class _AddProductDialog extends StatefulWidget {
-  final Future<void> Function(Product product) onSave;
+  final void Function(Product) onSave;
   const _AddProductDialog({required this.onSave});
+
+  static void show(BuildContext context, void Function(Product) onSave) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _AddProductDialog(
+        onSave: (Product p) {
+          Navigator.of(context).pop();
+          onSave(p);
+        },
+      ),
+    );
+  }
 
   @override
   State<_AddProductDialog> createState() => _AddProductDialogState();
@@ -201,7 +198,6 @@ class _AddProductDialogState extends State<_AddProductDialog> {
   final _cc = TextEditingController();
   final _sc = TextEditingController();
   final _thc = TextEditingController();
-  bool _saving = false;
 
   @override
   void dispose() {
@@ -215,34 +211,22 @@ class _AddProductDialogState extends State<_AddProductDialog> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_saving) return;
+  void _submit() {
     if (_nc.text.trim().isEmpty) return;
-
-    FocusScope.of(context).unfocus();
-    setState(() => _saving = true);
-
-    try {
-      await widget.onSave(Product(
-        id: '',
-        name: _nc.text.trim(),
-        type: '',
-        sizeLength: double.tryParse(_lc.text) ?? 0,
-        sizeWidth: double.tryParse(_wc.text) ?? 0,
-        thickness: double.tryParse(_tc.text) ?? 0,
-        density: 0,
-        unitType: 'per_sqft',
-        unitPrice: 0,
-        costPrice: double.tryParse(_cc.text) ?? 0,
-        currentStock: double.tryParse(_sc.text) ?? 0,
-        lowStockThreshold: double.tryParse(_thc.text) ?? 0,
-      ));
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on Exception {
-      if (!mounted) return;
-      setState(() => _saving = false);
-    }
+    widget.onSave(Product(
+      id: '',
+      name: _nc.text.trim(),
+      type: '',
+      sizeLength: double.tryParse(_lc.text) ?? 0,
+      sizeWidth: double.tryParse(_wc.text) ?? 0,
+      thickness: double.tryParse(_tc.text) ?? 0,
+      density: 0,
+      unitType: 'per_sqft',
+      unitPrice: 0,
+      costPrice: double.tryParse(_cc.text) ?? 0,
+      currentStock: double.tryParse(_sc.text) ?? 0,
+      lowStockThreshold: double.tryParse(_thc.text) ?? 0,
+    ));
   }
 
   @override
@@ -287,13 +271,11 @@ class _AddProductDialogState extends State<_AddProductDialog> {
       ),
       actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton.icon(
-          onPressed: _saving ? null : _submit,
-          icon: _saving
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.check),
-          label: Text(_saving ? 'Saving...' : 'Add Product'),
+          onPressed: _submit,
+          icon: const Icon(Icons.check),
+          label: const Text('Add Product'),
         ),
       ],
     );
@@ -302,8 +284,22 @@ class _AddProductDialogState extends State<_AddProductDialog> {
 
 class _EditProductDialog extends StatefulWidget {
   final Product product;
-  final Future<void> Function(Product product) onSave;
+  final void Function(Product) onSave;
   const _EditProductDialog({required this.product, required this.onSave});
+
+  static void show(BuildContext context, Product product, void Function(Product) onSave) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _EditProductDialog(
+        product: product,
+        onSave: (Product p) {
+          Navigator.of(context).pop();
+          onSave(p);
+        },
+      ),
+    );
+  }
 
   @override
   State<_EditProductDialog> createState() => _EditProductDialogState();
@@ -317,7 +313,6 @@ class _EditProductDialogState extends State<_EditProductDialog> {
   late final TextEditingController _cc;
   late final TextEditingController _sc;
   late final TextEditingController _thc;
-  bool _saving = false;
 
   @override
   void initState() {
@@ -344,29 +339,17 @@ class _EditProductDialogState extends State<_EditProductDialog> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (_saving) return;
+  void _submit() {
     if (_nc.text.trim().isEmpty) return;
-
-    FocusScope.of(context).unfocus();
-    setState(() => _saving = true);
-
-    try {
-      await widget.onSave(widget.product.copyWith(
-        name: _nc.text.trim(),
-        sizeLength: double.tryParse(_lc.text) ?? widget.product.sizeLength,
-        sizeWidth: double.tryParse(_wc.text) ?? widget.product.sizeWidth,
-        thickness: double.tryParse(_tc.text) ?? widget.product.thickness,
-        costPrice: double.tryParse(_cc.text) ?? widget.product.costPrice,
-        currentStock: double.tryParse(_sc.text) ?? widget.product.currentStock,
-        lowStockThreshold: double.tryParse(_thc.text) ?? widget.product.lowStockThreshold,
-      ));
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } on Exception {
-      if (!mounted) return;
-      setState(() => _saving = false);
-    }
+    widget.onSave(widget.product.copyWith(
+      name: _nc.text.trim(),
+      sizeLength: double.tryParse(_lc.text) ?? widget.product.sizeLength,
+      sizeWidth: double.tryParse(_wc.text) ?? widget.product.sizeWidth,
+      thickness: double.tryParse(_tc.text) ?? widget.product.thickness,
+      costPrice: double.tryParse(_cc.text) ?? widget.product.costPrice,
+      currentStock: double.tryParse(_sc.text) ?? widget.product.currentStock,
+      lowStockThreshold: double.tryParse(_thc.text) ?? widget.product.lowStockThreshold,
+    ));
   }
 
   @override
@@ -411,13 +394,11 @@ class _EditProductDialogState extends State<_EditProductDialog> {
       ),
       actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         FilledButton.icon(
-          onPressed: _saving ? null : _submit,
-          icon: _saving
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.check),
-          label: Text(_saving ? 'Saving...' : 'Save Product'),
+          onPressed: _submit,
+          icon: const Icon(Icons.check),
+          label: const Text('Save Product'),
         ),
       ],
     );
@@ -428,186 +409,155 @@ class RestockDialog extends StatefulWidget {
   final Product product;
   const RestockDialog({super.key, required this.product});
 
+  static void show(BuildContext context, Product product) {
+    final qtyCtrl = TextEditingController(text: '1');
+    final unitCostCtrl = TextEditingController(text: product.costPrice.toStringAsFixed(0));
+    final paidCtrl = TextEditingController();
+    String supplierId = '';
+    String supplierName = '';
+    bool userEditedPaid = false;
+
+    void recalc() {
+      if (userEditedPaid) return;
+      final q = double.tryParse(qtyCtrl.text) ?? 0;
+      final uc = double.tryParse(unitCostCtrl.text) ?? 0;
+      paidCtrl.text = (q * uc) > 0 ? (q * uc).toStringAsFixed(0) : '';
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setInnerState) => AlertDialog(
+          key: const ValueKey('restock_dialog_modal'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Restock: ${product.name}', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface)),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Current stock: ${product.stockLabel}',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 12),
+              Consumer(builder: (context, ref, _) {
+                final suppliersAsync = ref.watch(suppliersStreamProvider);
+                return suppliersAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (suppliers) => InkWell(
+                    onTap: () async {
+                      final selected = await showDialog<Supplier>(
+                        context: context,
+                        builder: (ctx) => SimpleDialog(
+                          title: const Text('Select Supplier'),
+                          children: [
+                            if (supplierId.isNotEmpty)
+                              SimpleDialogOption(
+                                onPressed: () => Navigator.pop(ctx, Supplier(id: '', name: 'Unknown')),
+                                child: const Text('Unknown / In-house'),
+                              ),
+                            ...suppliers.map((s) => SimpleDialogOption(
+                              onPressed: () => Navigator.pop(ctx, s),
+                              child: Text(s.name),
+                            )),
+                          ],
+                        ),
+                      );
+                      if (selected != null) {
+                        setInnerState(() { supplierId = selected.id; supplierName = selected.name; });
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+                      ),
+                      child: Row(children: [
+                        Icon(Icons.business_rounded, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(supplierId.isEmpty ? 'Select Supplier (optional)' : supplierName,
+                              style: TextStyle(fontSize: 13, color: supplierId.isEmpty ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.onSurface)),
+                        ),
+                        Icon(Icons.arrow_drop_down_rounded, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ]),
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
+              TextField(
+                controller: qtyCtrl,
+                decoration: const InputDecoration(labelText: 'Quantity (pcs)', filled: true),
+                keyboardType: TextInputType.number,
+                onChanged: (_) { setInnerState(() { recalc(); }); },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: unitCostCtrl,
+                decoration: const InputDecoration(labelText: 'Unit Cost / Buying Price (PKR)', filled: true),
+                keyboardType: TextInputType.number,
+                onChanged: (_) { setInnerState(() { recalc(); }); },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: paidCtrl,
+                decoration: const InputDecoration(labelText: 'Total Amount Paid (PKR)', filled: true),
+                keyboardType: TextInputType.number,
+                onChanged: (_) {
+                  setInnerState(() { userEditedPaid = true; });
+                },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  const Text('Calculated Total:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Rs ${((double.tryParse(qtyCtrl.text) ?? 0) * (double.tryParse(unitCostCtrl.text) ?? 0)).toStringAsFixed(0)}',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary, fontSize: 16,
+                          fontFeatures: [FontFeature('tnum')])),
+                ]),
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton.icon(
+              onPressed: () {
+                final q = double.tryParse(qtyCtrl.text) ?? 0;
+                final uc = double.tryParse(unitCostCtrl.text) ?? product.costPrice;
+                if (q <= 0 || uc <= 0) return;
+                final paid = double.tryParse(paidCtrl.text) ?? 0;
+                Navigator.of(ctx).pop();
+                FirestoreService().restockTransaction(product.id, q, uc, paid, supplierId: supplierId)
+                    .catchError((_) {});
+              },
+              icon: const Icon(Icons.add_shopping_cart_rounded),
+              label: const Text('Restock'),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(() {
+      qtyCtrl.dispose();
+      unitCostCtrl.dispose();
+      paidCtrl.dispose();
+    });
+  }
+
   @override
   State<RestockDialog> createState() => _RestockDialogState();
 }
 
 class _RestockDialogState extends State<RestockDialog> {
-  late TextEditingController _qtyCtrl;
-  late TextEditingController _unitCostCtrl;
-  late TextEditingController _paidCtrl;
-  bool _userEditedPaid = false;
-  bool _submitting = false;
-  String _supplierId = '';
-  String _supplierName = '';
-
   @override
-  void initState() {
-    super.initState();
-    _qtyCtrl = TextEditingController(text: '1');
-    _unitCostCtrl = TextEditingController(text: widget.product.costPrice.toStringAsFixed(0));
-    _paidCtrl = TextEditingController();
-    _recalc();
-    _qtyCtrl.addListener(_onFieldChanged);
-    _unitCostCtrl.addListener(_onFieldChanged);
-  }
-
-  void _onFieldChanged() {
-    if (!_userEditedPaid) _recalc();
-  }
-
-  void _recalc() {
-    final q = double.tryParse(_qtyCtrl.text) ?? 0;
-    final uc = double.tryParse(_unitCostCtrl.text) ?? 0;
-    _paidCtrl.text = (q * uc) > 0 ? (q * uc).toStringAsFixed(0) : '';
-  }
-
-  @override
-  void dispose() {
-    _qtyCtrl.removeListener(_onFieldChanged);
-    _unitCostCtrl.removeListener(_onFieldChanged);
-    _qtyCtrl.dispose();
-    _unitCostCtrl.dispose();
-    _paidCtrl.dispose();
-    super.dispose();
-  }
-
-  double get _total => (double.tryParse(_qtyCtrl.text) ?? 0) * (double.tryParse(_unitCostCtrl.text) ?? 0);
-
-  Future<void> _submit() async {
-    final q = double.tryParse(_qtyCtrl.text) ?? 0;
-    final uc = double.tryParse(_unitCostCtrl.text) ?? widget.product.costPrice;
-    if (q <= 0 || uc <= 0) return;
-
-    FocusScope.of(context).unfocus();
-    setState(() => _submitting = true);
-
-    try {
-      final paid = double.tryParse(_paidCtrl.text) ?? 0;
-      final svc = FirestoreService();
-      await svc.restockTransaction(widget.product.id, q, uc, paid, supplierId: _supplierId);
-      if (!mounted) return;
-      Navigator.pop(context);
-    } on Exception {
-      if (!mounted) return;
-      setState(() => _submitting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return AlertDialog(
-      key: const ValueKey('restock_dialog_modal'),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text('Restock: ${widget.product.name}', style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurface)),
-      content: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Current stock: ${widget.product.stockLabel}',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
-          const SizedBox(height: 12),
-          Consumer(builder: (context, ref, _) {
-            final suppliersAsync = ref.watch(suppliersStreamProvider);
-            return suppliersAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (suppliers) => InkWell(
-                onTap: () async {
-                  final selected = await showDialog<Supplier>(
-                    context: context,
-                    builder: (ctx) => SimpleDialog(
-                      title: const Text('Select Supplier'),
-                      children: [
-                        if (_supplierId.isNotEmpty)
-                          SimpleDialogOption(
-                            onPressed: () => Navigator.pop(ctx, Supplier(id: '', name: 'Unknown')),
-                            child: const Text('Unknown / In-house'),
-                          ),
-                        ...suppliers.map((s) => SimpleDialogOption(
-                          onPressed: () => Navigator.pop(ctx, s),
-                          child: Text(s.name),
-                        )),
-                      ],
-                    ),
-                  );
-                  if (selected != null && mounted) {
-                    setState(() { _supplierId = selected.id; _supplierName = selected.name; });
-                  }
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: cs.outlineVariant),
-                  ),
-                  child: Row(children: [
-                    Icon(Icons.business_rounded, size: 16, color: cs.onSurfaceVariant),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(_supplierId.isEmpty ? 'Select Supplier (optional)' : _supplierName,
-                          style: TextStyle(fontSize: 13, color: _supplierId.isEmpty ? cs.onSurfaceVariant : cs.onSurface)),
-                    ),
-                    Icon(Icons.arrow_drop_down_rounded, size: 18, color: cs.onSurfaceVariant),
-                  ]),
-                ),
-              ),
-            );
-          }),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _qtyCtrl,
-            decoration: const InputDecoration(labelText: 'Quantity (pcs)', filled: true),
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _unitCostCtrl,
-            decoration: const InputDecoration(labelText: 'Unit Cost / Buying Price (PKR)', filled: true),
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _paidCtrl,
-            decoration: const InputDecoration(labelText: 'Total Amount Paid (PKR)', filled: true),
-            keyboardType: TextInputType.number,
-            onChanged: (_) {
-              _userEditedPaid = true;
-              setState(() {});
-            },
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Calculated Total:', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Rs ${_total.toStringAsFixed(0)}',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary, fontSize: 16,
-                      fontFeatures: [FontFeature('tnum')])),
-            ]),
-          ),
-        ]),
-      ),
-      actions: [
-        TextButton(onPressed: _submitting ? null : () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton.icon(
-          onPressed: _submitting ? null : _submit,
-          icon: _submitting
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.add_shopping_cart_rounded),
-          label: Text(_submitting ? 'Restocking...' : 'Restock'),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _ProdCard extends StatelessWidget {
@@ -619,52 +569,63 @@ class _ProdCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
+    final fmt = NumberFormat('#,##0');
+    final stockInt = product.currentStock.toInt();
+    final unitPrice = fmt.format(product.costPrice.toInt());
     final totalValue = product.currentStock * product.costPrice;
+    final totalFmt = fmt.format(totalValue.toInt());
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(13),
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: cs.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: cs.outlineVariant),
-          boxShadow: [BoxShadow(color: cs.shadow, blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4)],
+          boxShadow: [
+            BoxShadow(color: cs.shadow, blurRadius: 24, offset: const Offset(0, 8), spreadRadius: -4),
+          ],
         ),
         child: Row(children: [
           Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: ac.inventoryTint,
-              borderRadius: BorderRadius.circular(12),
-            ),
+            width: 46, height: 46,
+            decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.inventory_2_rounded, size: 20, color: ac.inventoryFg),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(product.name, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
+            Text(product.name, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: cs.onSurface)),
             const SizedBox(height: 2),
             Text('${product.sizeLength.toStringAsFixed(0)}in \u00d7 ${product.sizeWidth.toStringAsFixed(0)}in \u00b7 ${product.thickness.toStringAsFixed(0)}in',
                 style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: product.isLowStock ? ac.expenseTint : ac.profitTint,
                   borderRadius: BorderRadius.circular(999),
                 ),
-                child: Text(product.isLowStock ? 'Low \u00b7 ${product.stockLabel} left' : '${product.stockLabel} in stock',
-                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
+                child: Text(product.isLowStock ? 'Low \u00b7 $stockInt left' : '$stockInt pcs in stock',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                         color: product.isLowStock ? ac.expenseFg : ac.profitFg)),
               ),
-              Text('Rs ${product.costPrice.toStringAsFixed(0)}/pc',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
+              Text('Rs $unitPrice/pc',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5,
+                      fontFeatures: const [FontFeature.tabularFigures()], color: cs.onSurface)),
             ]),
-            const SizedBox(height: 4),
-            Text('Total Value: Rs ${totalValue.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: cs.primary,
-                    fontFeatures: [FontFeature('tnum')])),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.only(top: 6),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: cs.outlineVariant, width: 0.5))),
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('Total value', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: ac.inkFaint)),
+                Text('Rs $totalFmt',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppTheme.tealDark,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
+              ]),
+            ),
           ])),
         ]),
       ),

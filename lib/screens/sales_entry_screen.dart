@@ -8,6 +8,7 @@ import '../providers/customer_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/debounce.dart';
 
 class CartWidget extends ConsumerStatefulWidget {
   final CartItem item;
@@ -133,9 +134,10 @@ class SalesEntryScreen extends ConsumerStatefulWidget {
 
 class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   final _paidCtrl = TextEditingController(text: '0');
+  final _paidDebounce = Debouncer();
 
   @override
-  void dispose() { _paidCtrl.dispose(); super.dispose(); }
+  void dispose() { _paidCtrl.dispose(); _paidDebounce.dispose(); super.dispose(); }
 
   Future<Customer?> _addNewCustomerFromDialog() async {
     final nc = TextEditingController();
@@ -154,13 +156,13 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () async {
+          FilledButton(onPressed: () {
             if (nc.text.trim().isEmpty) return;
             final svc = ref.read(firestoreServiceProvider);
             final customer = Customer(
                 id: svc.generateId(), name: nc.text.trim(), phone: pc.text.trim());
-            await svc.addCustomer(customer);
-            if (ctx.mounted) Navigator.pop(ctx, customer);
+            Navigator.pop(ctx, customer);
+            svc.addCustomer(customer).catchError((_) {});
           }, child: const Text('Save')),
         ],
       ),
@@ -422,7 +424,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                   child: TextField(
                     controller: _paidCtrl,
                     keyboardType: TextInputType.number,
-                    onChanged: (_) => setState(() {}),
+                    onChanged: (_) => _paidDebounce.call(() => setState(() {})),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       isDense: true,

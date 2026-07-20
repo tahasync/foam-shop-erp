@@ -93,8 +93,5 @@ class Product {
 
   bool get isLowStock => currentStock <= lowStockThreshold;
 
-  String get stockLabel {
-    if (unitType == 'per_sqft') return '${currentStock.toStringAsFixed(1)} sq.ft';
-    return '${currentStock.toStringAsFixed(0)} pcs';
-  }
+  String get stockLabel => '${currentStock.toInt()} pcs';
 }
