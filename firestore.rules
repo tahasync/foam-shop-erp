@@ -11,17 +11,24 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
 
-    // User data access
+    function isNonEmpty(val) {
+      return val is string && val.size() > 0;
+    }
+
+    function isPositiveNumber(val) {
+      return val is number && val >= 0;
+    }
+
+    // User data access — strict tenant isolation
     match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
 
       // Products
       match /products/{productId} {
         allow write: if isOwner(userId)
-          && request.resource.data.current_stock is number
-          && request.resource.data.current_stock >= 0
-          && request.resource.data.cost_price is number
-          && request.resource.data.cost_price >= 0;
+          && isPositiveNumber(request.resource.data.current_stock)
+          && isPositiveNumber(request.resource.data.cost_price);
+        allow delete: if false;
       }
 
       // Sales
@@ -29,15 +36,44 @@ service cloud.firestore {
         allow write: if isOwner(userId)
           && request.resource.data.line_items is list
           && request.resource.data.line_items.size() > 0
-          && request.resource.data.paid is number
-          && request.resource.data.paid >= 0;
+          && isPositiveNumber(request.resource.data.paid);
+        allow delete: if false;
       }
 
       // Purchases
       match /purchases/{purchaseId} {
         allow write: if isOwner(userId)
-          && request.resource.data.cost_amount is number
+          && isPositiveNumber(request.resource.data.cost_amount)
           && request.resource.data.cost_amount > 0;
+        allow delete: if false;
+      }
+
+      // Payments — require positive amount
+      match /payments/{paymentId} {
+        allow write: if isOwner(userId)
+          && isPositiveNumber(request.resource.data.amount_collected);
+        allow delete: if false;
+      }
+
+      // Supplier payments
+      match /supplier_payments/{spId} {
+        allow write: if isOwner(userId)
+          && isPositiveNumber(request.resource.data.amount_paid);
+        allow delete: if false;
+      }
+
+      // Expenses
+      match /expenses/{expenseId} {
+        allow write: if isOwner(userId)
+          && isPositiveNumber(request.resource.data.amount);
+        allow delete: if false;
+      }
+
+      // Opening balance — only one doc allowed
+      match /opening_balances/{obId} {
+        allow write: if isOwner(userId)
+          && isPositiveNumber(request.resource.data.capital_amount);
+        allow delete: if false;
       }
     }
   }

@@ -53,26 +53,36 @@ class AccountSettingsScreen extends ConsumerWidget {
                 onTap: () => _editCapital(context, ref, openingBal),
               ),
               const Divider(),
-              ListTile(
-                leading: Container(width: 36, height: 36,
-                  decoration: BoxDecoration(color: cs.secondaryContainer, borderRadius: BorderRadius.circular(10)),
-                  child: Icon(Icons.brightness_6_rounded, color: cs.onSecondaryContainer)),
-                title: const Text('Theme'),
-                subtitle: Text(themeMode == ThemeMode.light ? 'Light' : themeMode == ThemeMode.dark ? 'Dark' : 'System',
-                    style: Theme.of(context).textTheme.bodyMedium),
-                trailing: SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_rounded)),
-                    ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_6_rounded)),
-                    ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_rounded)),
-                  ],
-                  selected: {themeMode},
-                  onSelectionChanged: (v) => ref.read(themeModeProvider.notifier).setMode(v.first),
-                  style: SegmentedButton.styleFrom(
-                    selectedBackgroundColor: cs.primaryContainer,
-                    backgroundColor: Colors.transparent,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(children: [
+                  Container(width: 36, height: 36,
+                    decoration: BoxDecoration(color: cs.secondaryContainer, borderRadius: BorderRadius.circular(10)),
+                    child: Icon(Icons.brightness_6_rounded, size: 18, color: cs.onSecondaryContainer)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Theme: ${themeMode == ThemeMode.light ? 'Light' : themeMode == ThemeMode.dark ? 'Dark' : 'System'}',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
-                ),
+                  SizedBox(
+                    width: 160,
+                    child: SegmentedButton<ThemeMode>(
+                      segments: const [
+                        ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode_rounded, size: 16)),
+                        ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_6_rounded, size: 16)),
+                        ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode_rounded, size: 16)),
+                      ],
+                      selected: {themeMode},
+                      onSelectionChanged: (v) => ref.read(themeModeProvider.notifier).setMode(v.first),
+                      style: SegmentedButton.styleFrom(
+                        selectedBackgroundColor: cs.primaryContainer,
+                        backgroundColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                      ),
+                    ),
+                  ),
+                ]),
               ),
             ]),
           ),

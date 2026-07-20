@@ -71,10 +71,7 @@ class _CartWidgetState extends ConsumerState<CartWidget> {
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: cs.outlineVariant)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: cs.outlineVariant)),
+                border: InputBorder.none,
               ),
               onChanged: (val) {
                 final newPrice = double.tryParse(val) ?? 0;

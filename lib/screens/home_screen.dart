@@ -39,7 +39,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Asif Foam Center'),
+        titleSpacing: 0,
+        title: const SizedBox.shrink(),
         actions: [
           const SyncStatusIndicator(),
           const SizedBox(width: 4),

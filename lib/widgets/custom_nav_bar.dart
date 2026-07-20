@@ -10,8 +10,9 @@ class CustomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: EdgeInsets.fromLTRB(14, 0, 14, bottomInset + 12),
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
