@@ -27,8 +27,9 @@ class CustomerKhataScreen extends ConsumerWidget {
             final cSales = sales.where((s) => s.customerId == c.id && !s.isVoided && !s.isQuote);
             final cPayments = payments.where((p) => p.customerId == c.id);
             final total = cSales.fold(0.0, (s, x) => s + x.amount);
+            final paid = cSales.fold(0.0, (s, x) => s + x.paid);
             final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
-            return _CustBal(customer: c, balance: total - recv);
+            return _CustBal(customer: c, balance: total - paid - recv);
           }).toList(),
           loading: () => null, error: (_, __) => null,
         ),
@@ -128,8 +129,9 @@ class _CustDetail extends ConsumerWidget {
             final cSales = sales.where((s) => s.customerId == customer.id && !s.isVoided && !s.isQuote);
             final cPayments = payments.where((p) => p.customerId == customer.id);
             final total = cSales.fold(0.0, (s, x) => s + x.amount);
+            final paid = cSales.fold(0.0, (s, x) => s + x.paid);
             final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
-            final balance = total - recv;
+            final balance = total - paid - recv;
 
             final txns = <_Txn>[
               ...cSales.map((s) => _Txn(date: s.date, desc: 'Sale — Diamond Foam', isSale: true, amount: s.amount)),

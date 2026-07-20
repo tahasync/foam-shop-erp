@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
-import '../models/payment.dart';
 import '../models/customer.dart';
 import '../providers/product_provider.dart';
 import '../providers/sales_provider.dart';
@@ -225,15 +224,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         deductions[c.product.id] = c.quantity.toDouble();
       }
       await svc.saveSaleTransaction(sale, deductions);
-
-      if (paid > 0 && state.customerId.isNotEmpty) {
-        await svc.addPayment(Payment(
-          id: svc.generateId(),
-          date: DateTime.now(),
-          customerId: state.customerId,
-          amountCollected: paid,
-        ));
-      }
     } else {
       await svc.addSale(sale);
     }
@@ -312,44 +302,58 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           productsAsync.when(
             loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
             error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
-            data: (products) => Column(children: products.map((p) => GestureDetector(
-              onTap: () {
-                if (p.currentStock <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Out of stock!')),
-                  );
-                  return;
-                }
-                ref.read(salesProvider.notifier).addToCart(p);
-              },
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                margin: const EdgeInsets.only(bottom: 6),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: cs.outlineVariant),
+            data: (products) => SearchAnchor(
+              builder: (context, controller) => SearchBar(
+                controller: controller,
+                hintText: 'Search products\u2026',
+                leading: const Padding(
+                  padding: EdgeInsets.only(left: 4),
+                  child: Icon(Icons.search_rounded, size: 20),
                 ),
-                child: Row(children: [
-                  Container(
-                    width: 38, height: 38,
-                    decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(10)),
-                    child: Icon(Icons.inventory_2_rounded, size: 18, color: ac.inventoryFg),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(p.name, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
-                    Text('${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in',
-                        style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
-                    Text('${p.stockLabel} left',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: ac.inkFaint)),
-                  ])),
-                  Text('Rs ${p.effectivePrice.toStringAsFixed(0)}',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13,
-                          fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
-                ]),
+                padding: WidgetStateProperty.all(
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                ),
+                shape: WidgetStateProperty.all(
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                elevation: WidgetStateProperty.all(0),
+                backgroundColor: WidgetStateProperty.all(cs.surfaceContainerLowest),
+                side: WidgetStateProperty.all(BorderSide(color: cs.outlineVariant)),
+                onTap: () => controller.openView(),
+                readOnly: true,
               ),
-            )).toList()),
+              suggestionsBuilder: (context, controller) {
+                final query = controller.text.toLowerCase();
+                return products
+                    .where((p) =>
+                        query.isEmpty || p.name.toLowerCase().contains(query))
+                    .map((p) => ListTile(
+                          leading: Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(8)),
+                            child: Icon(Icons.inventory_2_rounded, size: 15, color: ac.inventoryFg),
+                          ),
+                          title: Text(p.name,
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
+                          subtitle: Text(
+                              '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in',
+                              style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
+                          trailing: Text('Rs ${p.effectivePrice.toStringAsFixed(0)}',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13,
+                                  fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
+                          onTap: () {
+                            controller.closeView('');
+                            if (p.currentStock <= 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Out of stock!')),
+                              );
+                              return;
+                            }
+                            ref.read(salesProvider.notifier).addToCart(p);
+                          },
+                        ));
+              },
+            ),
           ),
           const SizedBox(height: 10),
           Row(children: [
