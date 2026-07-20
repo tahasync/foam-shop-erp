@@ -24,6 +24,15 @@ class ExportService {
     return '${_dateFmt.format(start)} \u2014 ${_dateFmt.format(end)}';
   }
 
+  Future<Directory> _getPublicDir() async {
+    if (Platform.isAndroid) {
+      final downloadDir = Directory('/storage/emulated/0/Download');
+      if (await downloadDir.exists()) return downloadDir;
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    return dir;
+  }
+
   Future<File> generateCsvReport({
     required List<Sale> sales,
     required List<Product> products,
@@ -54,8 +63,13 @@ class ExportService {
       }).join(', ');
       double cogs = 0;
       for (final li in sale.lineItems) {
-        final prod = productMap[li.productId];
-        if (prod != null) cogs += li.qtyOrArea * prod.costPrice;
+        double unitCost = li.costPriceAtSale;
+        if (unitCost <= 0) {
+          final prod = productMap[li.productId];
+          unitCost = prod?.costPrice ?? 0;
+        }
+        if (unitCost <= 0) unitCost = li.salePrice * 0.70;
+        cogs += li.qtyOrArea * unitCost;
       }
       rows.add([
         _dateFmt.format(sale.date),
@@ -71,8 +85,9 @@ class ExportService {
     rows.add(['TOTAL', '', '', _fmtRaw(summary.revenue), _fmtRaw(summary.cogs), _fmtRaw(summary.netProfit)]);
 
     final csv = const ListToCsvConverter().convert(rows);
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/foam_shop_report_${_dateFmtFile.format(DateTime.now())}.csv');
+    final dir = await _getPublicDir();
+    final fileName = 'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.csv';
+    final file = File('${dir.path}/$fileName');
     await file.writeAsString(csv);
     return file;
   }
@@ -96,10 +111,10 @@ class ExportService {
     int pageNum = 0;
     final dataRows = sales.where((s) => !s.isVoided && !s.isQuote).toList();
     final chunkSize = 25;
-    final totalChunks = (dataRows.length / chunkSize).ceil();
+    final totalChunks = dataRows.isEmpty ? 1 : (dataRows.length / chunkSize).ceil();
 
     for (var chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
-      final chunk = dataRows.skip(chunkIdx * chunkSize).take(chunkSize).toList();
+      final chunk = dataRows.isEmpty ? [] : dataRows.skip(chunkIdx * chunkSize).take(chunkSize).toList();
       pageNum++;
 
       doc.addPage(pw.MultiPage(
@@ -168,8 +183,13 @@ class ExportService {
               }).join(', ');
               double cogs = 0;
               for (final li in s.lineItems) {
-                final prod = productMap[li.productId];
-                if (prod != null) cogs += li.qtyOrArea * prod.costPrice;
+                double unitCost = li.costPriceAtSale;
+                if (unitCost <= 0) {
+                  final prod = productMap[li.productId];
+                  unitCost = prod?.costPrice ?? 0;
+                }
+                if (unitCost <= 0) unitCost = li.salePrice * 0.70;
+                cogs += li.qtyOrArea * unitCost;
               }
               return [
                 _dateFmt.format(s.date),
@@ -181,7 +201,7 @@ class ExportService {
               ];
             }).toList(),
           ),
-          if (chunkIdx == totalChunks - 1) ...[
+          if (chunkIdx == totalChunks - 1 && dataRows.isNotEmpty) ...[
             pw.SizedBox(height: 8),
             pw.Divider(),
             pw.SizedBox(height: 4),
@@ -204,8 +224,9 @@ class ExportService {
       ));
     }
 
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/foam_shop_report_${_dateFmtFile.format(DateTime.now())}.pdf');
+    final dir = await _getPublicDir();
+    final fileName = 'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.pdf';
+    final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(await doc.save());
     return file;
   }

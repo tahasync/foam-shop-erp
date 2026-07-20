@@ -196,18 +196,23 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     }
 
     try {
+      final productMap = {for (final p in products) p.id: p};
       final sale = Sale(
         id: widget.editSale?.id ?? svc.generateId(),
         date: _selectedDate,
         customerId: _selectedCustomer!.id,
-        lineItems: _items.map((i) => SaleLineItem(
-          productId: i.product.id,
-          customLength: null,
-          customWidth: null,
-          qtyOrArea: i.qty,
-          salePrice: i.salePrice,
-          lineDiscountAmount: i.lineDisc,
-        )).toList(),
+        lineItems: _items.map((i) {
+          final prod = productMap[i.product.id];
+          return SaleLineItem(
+            productId: i.product.id,
+            customLength: null,
+            customWidth: null,
+            qtyOrArea: i.qty,
+            salePrice: i.salePrice,
+            lineDiscountAmount: i.lineDisc,
+            costPriceAtSale: prod?.costPrice ?? 0,
+          );
+        }).toList(),
         paid: _paid,
         discountAmount: double.tryParse(_discAmtCtrl.text),
         discountPercent: double.tryParse(_discPctCtrl.text),
