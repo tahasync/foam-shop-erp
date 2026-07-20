@@ -130,40 +130,130 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final fk = GlobalKey<FormState>();
     String name = '', type = 'Foam', unitType = 'per_piece';
     double sl = 0, sw = 0, th = 0, de = 0, up = 0, cp = 0, cs = 0, lt = 0;
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Add Product'),
-      content: SingleChildScrollView(child: Form(key: fk, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextFormField(decoration: const InputDecoration(labelText: 'Name', filled: true), onSaved: (v) => name = v ?? '',
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
-        DropdownButtonFormField<String>(initialValue: type, decoration: const InputDecoration(labelText: 'Type', filled: true),
-            items: 'Foam,Mattress,Sponge,Pillow,Custom Cut'.split(',').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-            onChanged: (v) => type = v ?? 'Foam'),
-        DropdownButtonFormField<String>(initialValue: unitType, decoration: const InputDecoration(labelText: 'Unit Type', filled: true),
-            items: const [DropdownMenuItem(value: 'per_piece', child: Text('Per Piece')), DropdownMenuItem(value: 'per_sqft', child: Text('Per Sq.ft'))],
-            onChanged: (v) => unitType = v ?? 'per_piece'),
-        TextFormField(decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true), keyboardType: TextInputType.number, onSaved: (v) => sl = double.tryParse(v ?? '') ?? 0),
-        TextFormField(decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true), keyboardType: TextInputType.number, onSaved: (v) => sw = double.tryParse(v ?? '') ?? 0),
-        TextFormField(decoration: const InputDecoration(labelText: 'Thickness', filled: true), keyboardType: TextInputType.number, onSaved: (v) => th = double.tryParse(v ?? '') ?? 0),
-        TextFormField(decoration: const InputDecoration(labelText: 'Density', filled: true), keyboardType: TextInputType.number, onSaved: (v) => de = double.tryParse(v ?? '') ?? 0),
-        TextFormField(decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true), keyboardType: TextInputType.number, onSaved: (v) => cp = double.tryParse(v ?? '') ?? 0),
-        TextFormField(decoration: const InputDecoration(labelText: 'Sell Price (PKR)', filled: true), keyboardType: TextInputType.number, onSaved: (v) => up = double.tryParse(v ?? '') ?? 0,
-            validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Enter valid price' : null),
-        TextFormField(decoration: const InputDecoration(labelText: 'Current Stock', filled: true), keyboardType: TextInputType.number, onSaved: (v) => cs = double.tryParse(v ?? '') ?? 0),
-        TextFormField(decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true), keyboardType: TextInputType.number, onSaved: (v) => lt = double.tryParse(v ?? '') ?? 0),
-      ]))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () async {
-          if (!fk.currentState!.validate()) return;
-          fk.currentState!.save();
-          final svc = ref.read(firestoreServiceProvider);
-          await svc.addProduct(Product(id: svc.generateId(), name: name, type: type,
-              sizeLength: sl, sizeWidth: sw, thickness: th, density: de,
-              unitType: unitType, unitPrice: up, costPrice: cp,
-              currentStock: cs, lowStockThreshold: lt));
-          if (ctx.mounted) Navigator.pop(ctx);
-        }, child: const Text('Save')),
-      ],
+    final cs2 = Theme.of(context).colorScheme;
+    showDialog(context: context, builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.95,
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        padding: const EdgeInsets.all(20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Add Product', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold, color: cs2.onSurface,
+          )),
+          const SizedBox(height: 16),
+          Expanded(child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Form(key: fk, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Name', filled: true),
+                onSaved: (v) => name = v ?? '',
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Type', filled: true),
+                  items: 'Foam,Mattress,Sponge,Pillow,Custom Cut'.split(',').map((t) =>
+                    DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (v) => type = v ?? 'Foam',
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: DropdownButtonFormField<String>(
+                  initialValue: unitType,
+                  decoration: const InputDecoration(labelText: 'Unit Type', filled: true),
+                  items: const [
+                    DropdownMenuItem(value: 'per_piece', child: Text('Per Piece')),
+                    DropdownMenuItem(value: 'per_sqft', child: Text('Per Sq.ft')),
+                  ],
+                  onChanged: (v) => unitType = v ?? 'per_piece',
+                )),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => sl = double.tryParse(v ?? '') ?? 0,
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => sw = double.tryParse(v ?? '') ?? 0,
+                )),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Thickness', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => th = double.tryParse(v ?? '') ?? 0,
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Density', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => de = double.tryParse(v ?? '') ?? 0,
+                )),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => cp = double.tryParse(v ?? '') ?? 0,
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Sell Price (PKR)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => up = double.tryParse(v ?? '') ?? 0,
+                  validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Enter valid price' : null,
+                )),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Current Stock', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => cs = double.tryParse(v ?? '') ?? 0,
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => lt = double.tryParse(v ?? '') ?? 0,
+                )),
+              ]),
+            ])),
+          )),
+          const SizedBox(height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: cs2.onSurfaceVariant))),
+            const SizedBox(width: 12),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                if (!fk.currentState!.validate()) return;
+                fk.currentState!.save();
+                final svc = ref.read(firestoreServiceProvider);
+                await svc.addProduct(Product(id: svc.generateId(), name: name, type: type,
+                    sizeLength: sl, sizeWidth: sw, thickness: th, density: de,
+                    unitType: unitType, unitPrice: up, costPrice: cp,
+                    currentStock: cs, lowStockThreshold: lt));
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ]),
+        ]),
+      ),
     ));
   }
 
@@ -172,35 +262,112 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     String name = product.name, type = product.type, unitType = product.unitType;
     double sl = product.sizeLength, sw = product.sizeWidth, th = product.thickness;
     double de = product.density, up = product.unitPrice, cp = product.costPrice, lt = product.lowStockThreshold;
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Edit Product'),
-      content: SingleChildScrollView(child: Form(key: fk, child: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextFormField(initialValue: name, decoration: const InputDecoration(labelText: 'Name', filled: true), onSaved: (v) => name = v ?? name),
-        DropdownButtonFormField<String>(initialValue: type, decoration: const InputDecoration(labelText: 'Type', filled: true),
-            items: 'Foam,Mattress,Sponge,Pillow,Custom Cut'.split(',').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-            onChanged: (v) => type = v ?? type),
-        DropdownButtonFormField<String>(initialValue: unitType, decoration: const InputDecoration(labelText: 'Unit Type', filled: true),
-            items: const [DropdownMenuItem(value: 'per_piece', child: Text('Per Piece')), DropdownMenuItem(value: 'per_sqft', child: Text('Per Sq.ft'))],
-            onChanged: (v) => unitType = v ?? unitType),
-        TextFormField(initialValue: sl.toString(), decoration: const InputDecoration(labelText: 'Size Length', filled: true), keyboardType: TextInputType.number, onSaved: (v) => sl = double.tryParse(v ?? '') ?? sl),
-        TextFormField(initialValue: sw.toString(), decoration: const InputDecoration(labelText: 'Size Width', filled: true), keyboardType: TextInputType.number, onSaved: (v) => sw = double.tryParse(v ?? '') ?? sw),
-        TextFormField(initialValue: th.toString(), decoration: const InputDecoration(labelText: 'Thickness', filled: true), keyboardType: TextInputType.number, onSaved: (v) => th = double.tryParse(v ?? '') ?? th),
-        TextFormField(initialValue: de.toString(), decoration: const InputDecoration(labelText: 'Density', filled: true), keyboardType: TextInputType.number, onSaved: (v) => de = double.tryParse(v ?? '') ?? de),
-        TextFormField(initialValue: cp.toString(), decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true), keyboardType: TextInputType.number, onSaved: (v) => cp = double.tryParse(v ?? '') ?? cp),
-        TextFormField(initialValue: up.toString(), decoration: const InputDecoration(labelText: 'Sell Price (PKR)', filled: true), keyboardType: TextInputType.number, onSaved: (v) => up = double.tryParse(v ?? '') ?? up),
-        TextFormField(initialValue: lt.toString(), decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true), keyboardType: TextInputType.number, onSaved: (v) => lt = double.tryParse(v ?? '') ?? lt),
-      ]))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () async {
-          fk.currentState!.save();
-          await ref.read(firestoreServiceProvider).updateProduct(product.copyWith(
-              name: name, type: type, sizeLength: sl, sizeWidth: sw, thickness: th,
-              density: de, unitType: unitType, unitPrice: up, costPrice: cp,
-              lowStockThreshold: lt));
-          if (ctx.mounted) Navigator.pop(ctx);
-        }, child: const Text('Update')),
-      ],
+    final cs2 = Theme.of(context).colorScheme;
+    showDialog(context: context, builder: (ctx) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.95,
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        padding: const EdgeInsets.all(20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Edit Product', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold, color: cs2.onSurface,
+          )),
+          const SizedBox(height: 16),
+          Expanded(child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Form(key: fk, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              TextFormField(initialValue: name,
+                decoration: const InputDecoration(labelText: 'Name', filled: true),
+                onSaved: (v) => name = v ?? name),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Type', filled: true),
+                  items: 'Foam,Mattress,Sponge,Pillow,Custom Cut'.split(',').map((t) =>
+                    DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (v) => type = v ?? type,
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: DropdownButtonFormField<String>(
+                  initialValue: unitType,
+                  decoration: const InputDecoration(labelText: 'Unit Type', filled: true),
+                  items: const [
+                    DropdownMenuItem(value: 'per_piece', child: Text('Per Piece')),
+                    DropdownMenuItem(value: 'per_sqft', child: Text('Per Sq.ft')),
+                  ],
+                  onChanged: (v) => unitType = v ?? unitType,
+                )),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(initialValue: sl.toString(),
+                  decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => sl = double.tryParse(v ?? '') ?? sl)),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(initialValue: sw.toString(),
+                  decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => sw = double.tryParse(v ?? '') ?? sw)),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(initialValue: th.toString(),
+                  decoration: const InputDecoration(labelText: 'Thickness', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => th = double.tryParse(v ?? '') ?? th)),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(initialValue: de.toString(),
+                  decoration: const InputDecoration(labelText: 'Density', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => de = double.tryParse(v ?? '') ?? de)),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(initialValue: cp.toString(),
+                  decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => cp = double.tryParse(v ?? '') ?? cp)),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(initialValue: up.toString(),
+                  decoration: const InputDecoration(labelText: 'Sell Price (PKR)', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => up = double.tryParse(v ?? '') ?? up)),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: TextFormField(initialValue: lt.toString(),
+                  decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true),
+                  keyboardType: TextInputType.number,
+                  onSaved: (v) => lt = double.tryParse(v ?? '') ?? lt)),
+              ]),
+            ])),
+          )),
+          const SizedBox(height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: cs2.onSurfaceVariant))),
+            const SizedBox(width: 12),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                fk.currentState!.save();
+                await ref.read(firestoreServiceProvider).updateProduct(product.copyWith(
+                    name: name, type: type, sizeLength: sl, sizeWidth: sw, thickness: th,
+                    density: de, unitType: unitType, unitPrice: up, costPrice: cp,
+                    lowStockThreshold: lt));
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ]),
+        ]),
+      ),
     ));
   }
 

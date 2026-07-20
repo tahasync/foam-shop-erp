@@ -188,9 +188,14 @@ class AppTheme {
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 0.5,
-        backgroundColor: Colors.transparent,
+        backgroundColor: cs.surface,
         foregroundColor: cs.onSurface,
-        titleTextStyle: jakarta.titleLarge?.copyWith(fontWeight: FontWeight.w800, fontSize: 19, letterSpacing: -0.01),
+        titleTextStyle: jakarta.titleLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: 19,
+          letterSpacing: -0.01,
+          color: cs.onSurface,
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
