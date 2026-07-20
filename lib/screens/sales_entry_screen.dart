@@ -2,22 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
 import '../models/payment.dart';
+import '../models/customer.dart';
 import '../providers/product_provider.dart';
 import '../providers/sales_provider.dart';
+import '../providers/customer_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 
-class CartWidget extends ConsumerWidget {
+class CartWidget extends ConsumerStatefulWidget {
   final CartItem item;
   const CartWidget({super.key, required this.item});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CartWidget> createState() => _CartWidgetState();
+}
+
+class _CartWidgetState extends ConsumerState<CartWidget> {
+  late final TextEditingController _priceCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _priceCtrl = TextEditingController(text: widget.item.salePrice.toStringAsFixed(0));
+  }
+
+  @override
+  void dispose() {
+    _priceCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
-    final priceCtrl = TextEditingController(text: item.salePrice.toStringAsFixed(0));
-    final total = item.lineTotal;
+    final total = widget.item.lineTotal;
     return Container(
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 8),
@@ -29,12 +49,12 @@ class CartWidget extends ConsumerWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(
-            child: Text(item.product.name,
+            child: Text(widget.item.product.name,
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
           ),
           InkWell(
             borderRadius: BorderRadius.circular(8),
-            onTap: () => ref.read(salesProvider.notifier).removeFromCart(item.product.id),
+            onTap: () => ref.read(salesProvider.notifier).removeFromCart(widget.item.product.id),
             child: Container(width: 24, height: 24, alignment: Alignment.center,
                 child: Text('\u2715', style: TextStyle(fontSize: 12, color: ac.inkFaint))),
           ),
@@ -44,7 +64,7 @@ class CartWidget extends ConsumerWidget {
           SizedBox(
             width: 90,
             child: TextField(
-              controller: priceCtrl,
+              controller: _priceCtrl,
               keyboardType: TextInputType.number,
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
                   fontFeatures: [FontFeature('tnum')], color: cs.onSurface),
@@ -58,7 +78,7 @@ class CartWidget extends ConsumerWidget {
               ),
               onChanged: (val) {
                 final newPrice = double.tryParse(val) ?? 0;
-                ref.read(salesProvider.notifier).updateItemPrice(item.product.id, newPrice);
+                ref.read(salesProvider.notifier).updateItemPrice(widget.item.product.id, newPrice);
               },
             ),
           ),
@@ -74,19 +94,19 @@ class CartWidget extends ConsumerWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               InkWell(
                 borderRadius: BorderRadius.circular(999),
-                onTap: () => ref.read(salesProvider.notifier).changeQty(item.product.id, -1),
+                onTap: () => ref.read(salesProvider.notifier).changeQty(widget.item.product.id, -1),
                 child: Container(width: 28, height: 28, alignment: Alignment.center,
                     child: Text('\u2212', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant))),
               ),
               SizedBox(
                 width: 24,
-                child: Text('${item.quantity}', textAlign: TextAlign.center,
+                child: Text('${widget.item.quantity}', textAlign: TextAlign.center,
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
               ),
               InkWell(
                 borderRadius: BorderRadius.circular(999),
-                onTap: item.quantity < item.product.currentStock
-                    ? () => ref.read(salesProvider.notifier).changeQty(item.product.id, 1)
+                onTap: widget.item.quantity < widget.item.product.currentStock
+                    ? () => ref.read(salesProvider.notifier).changeQty(widget.item.product.id, 1)
                     : null,
                 child: Container(width: 28, height: 28, alignment: Alignment.center,
                     child: Text('+', style: TextStyle(fontSize: 16, color: cs.onSurfaceVariant))),
@@ -118,22 +138,50 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   @override
   void dispose() { _paidCtrl.dispose(); super.dispose(); }
 
-  void _changeCustomer() {
-    final ctrl = TextEditingController(text: ref.read(salesProvider).customerName);
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      key: const ValueKey('change_customer_dialog'),
-      title: const Text('Customer'),
-      content: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Name', filled: true)),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () {
-          if (ctrl.text.trim().isNotEmpty) {
-            ref.read(salesProvider.notifier).setCustomer(ctrl.text.trim());
-          }
-          Navigator.pop(ctx);
-        }, child: const Text('Set')),
-      ],
-    )).then((_) => ctrl.dispose());
+  Future<Customer?> _addNewCustomerFromDialog() async {
+    final nc = TextEditingController();
+    final pc = TextEditingController();
+    final result = await showDialog<Customer>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Customer'),
+        content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nc, decoration: const InputDecoration(labelText: 'Name', filled: true)),
+            const SizedBox(height: 8),
+            TextField(controller: pc, decoration: const InputDecoration(labelText: 'Phone', filled: true),
+                keyboardType: TextInputType.phone),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () async {
+            if (nc.text.trim().isEmpty) return;
+            final svc = ref.read(firestoreServiceProvider);
+            final customer = Customer(
+                id: svc.generateId(), name: nc.text.trim(), phone: pc.text.trim());
+            await svc.addCustomer(customer);
+            if (ctx.mounted) Navigator.pop(ctx, customer);
+          }, child: const Text('Save')),
+        ],
+      ),
+    );
+    nc.dispose();
+    pc.dispose();
+    return result;
+  }
+
+  void _changeCustomer() async {
+    final result = await showDialog<Customer>(
+      context: context,
+      builder: (ctx) => _CustomerPickerDialog(
+        selectedId: ref.read(salesProvider).customerId,
+        onAddCustomer: _addNewCustomerFromDialog,
+      ),
+    );
+    if (result != null && mounted) {
+      ref.read(salesProvider.notifier).setCustomer(result.id, result.name);
+    }
   }
 
   Future<void> _save({required bool isQuote}) async {
@@ -164,7 +212,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     final sale = Sale(
       id: saleId,
       date: DateTime.now(),
-      customerId: state.customerName,
+      customerId: state.customerId,
       customerName: state.customerName,
       lineItems: lineItems,
       paid: paid,
@@ -178,11 +226,11 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       }
       await svc.saveSaleTransaction(sale, deductions);
 
-      if (paid > 0) {
+      if (paid > 0 && state.customerId.isNotEmpty) {
         await svc.addPayment(Payment(
           id: svc.generateId(),
           date: DateTime.now(),
-          customerId: state.customerName,
+          customerId: state.customerId,
           amountCollected: paid,
         ));
       }
@@ -226,7 +274,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          // Customer Section
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -259,8 +306,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             ]),
           ),
           const SizedBox(height: 14),
-
-          // Products
           Text('Select Product', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
               color: cs.onSurfaceVariant, letterSpacing: 0.06)),
           const SizedBox(height: 8),
@@ -307,8 +352,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             )).toList()),
           ),
           const SizedBox(height: 10),
-
-          // Cart
           Row(children: [
             Text('Cart', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                 color: cs.onSurfaceVariant, letterSpacing: 0.06)),
@@ -335,10 +378,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             )
           else
             ...salesState.cart.map((c) => CartWidget(key: ValueKey(c.product.id), item: c)),
-
           const SizedBox(height: 12),
-
-          // Totals
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -363,8 +403,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             ]),
           ),
           const SizedBox(height: 12),
-
-          // Paid & Balance
           Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -413,8 +451,6 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             ),
           ]),
           const SizedBox(height: 16),
-
-          // Save Sale button
           FilledButton.icon(
             onPressed: salesState.cart.isEmpty ? null : () => _save(isQuote: false),
             icon: const Icon(Icons.save_rounded),
@@ -432,6 +468,108 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CustomerPickerDialog extends StatefulWidget {
+  final String selectedId;
+  final Future<Customer?> Function() onAddCustomer;
+  const _CustomerPickerDialog({required this.selectedId, required this.onAddCustomer});
+
+  @override
+  State<_CustomerPickerDialog> createState() => _CustomerPickerDialogState();
+}
+
+class _CustomerPickerDialogState extends State<_CustomerPickerDialog> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      key: const ValueKey('customer_picker_dialog'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Select Customer', style: TextStyle(fontWeight: FontWeight.bold)),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'Search customers\u2026',
+              filled: true,
+              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onChanged: (v) => setState(() => _query = v.toLowerCase()),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Consumer(builder: (context, ref, _) {
+              final customersAsync = ref.watch(customersStreamProvider);
+              return customersAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+                data: (customers) {
+                  final filtered = customers.where((c) =>
+                      _query.isEmpty || c.name.toLowerCase().contains(_query)).toList();
+                  if (filtered.isEmpty) {
+                    return Center(
+                      child: Text('No customers found',
+                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
+                    );
+                  }
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final c = filtered[i];
+                      final selected = c.id == widget.selectedId;
+                      return ListTile(
+                        selected: selected,
+                        selectedTileColor: cs.primaryContainer.withValues(alpha: 0.3),
+                        leading: CircleAvatar(
+                          radius: 16,
+                          child: Text(c.name[0].toUpperCase(),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                        ),
+                        title: Text(c.name, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: c.phone.isNotEmpty
+                            ? Text(c.phone, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant))
+                            : null,
+                        onTap: () => Navigator.pop(context, c),
+                      );
+                    },
+                  );
+                },
+              );
+            }),
+          ),
+        ]),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            final c = await widget.onAddCustomer();
+            if (c != null && mounted) Navigator.pop(context, c);
+          },
+          child: const Text('+ Add Customer', style: TextStyle(fontWeight: FontWeight.w600)),
+        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        if (widget.selectedId.isNotEmpty)
+          TextButton(
+            onPressed: () => Navigator.pop(context, Customer(id: '', name: 'Walk-in Customer')),
+            child: const Text('Walk-in'),
+          ),
+      ],
     );
   }
 }

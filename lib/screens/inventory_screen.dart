@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/product.dart';
+import '../models/supplier.dart';
 import '../providers/product_provider.dart';
+import '../providers/supplier_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
@@ -436,6 +438,8 @@ class _RestockDialogState extends State<RestockDialog> {
   late TextEditingController _paidCtrl;
   bool _userEditedPaid = false;
   bool _submitting = false;
+  String _supplierId = '';
+  String _supplierName = '';
 
   @override
   void initState() {
@@ -472,16 +476,16 @@ class _RestockDialogState extends State<RestockDialog> {
 
   Future<void> _submit() async {
     final q = double.tryParse(_qtyCtrl.text) ?? 0;
-    if (q <= 0) return;
+    final uc = double.tryParse(_unitCostCtrl.text) ?? widget.product.costPrice;
+    if (q <= 0 || uc <= 0) return;
 
     FocusScope.of(context).unfocus();
     setState(() => _submitting = true);
 
     try {
-      final uc = double.tryParse(_unitCostCtrl.text) ?? widget.product.costPrice;
       final paid = double.tryParse(_paidCtrl.text) ?? 0;
       final svc = FirestoreService();
-      await svc.restockTransaction(widget.product.id, q, uc, paid);
+      await svc.restockTransaction(widget.product.id, q, uc, paid, supplierId: _supplierId);
       if (!mounted) return;
       Navigator.pop(context);
     } on Exception {
@@ -501,7 +505,57 @@ class _RestockDialogState extends State<RestockDialog> {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Current stock: ${widget.product.stockLabel}',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Consumer(builder: (context, ref, _) {
+            final suppliersAsync = ref.watch(suppliersStreamProvider);
+            return suppliersAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (suppliers) => InkWell(
+                onTap: () async {
+                  final selected = await showDialog<Supplier>(
+                    context: context,
+                    builder: (ctx) => SimpleDialog(
+                      title: const Text('Select Supplier'),
+                      children: [
+                        if (_supplierId.isNotEmpty)
+                          SimpleDialogOption(
+                            onPressed: () => Navigator.pop(ctx, Supplier(id: '', name: 'Unknown')),
+                            child: const Text('Unknown / In-house'),
+                          ),
+                        ...suppliers.map((s) => SimpleDialogOption(
+                          onPressed: () => Navigator.pop(ctx, s),
+                          child: Text(s.name),
+                        )),
+                      ],
+                    ),
+                  );
+                  if (selected != null && mounted) {
+                    setState(() { _supplierId = selected.id; _supplierName = selected.name; });
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: cs.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: cs.outlineVariant),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.business_rounded, size: 16, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_supplierId.isEmpty ? 'Select Supplier (optional)' : _supplierName,
+                          style: TextStyle(fontSize: 13, color: _supplierId.isEmpty ? cs.onSurfaceVariant : cs.onSurface)),
+                    ),
+                    Icon(Icons.arrow_drop_down_rounded, size: 18, color: cs.onSurfaceVariant),
+                  ]),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
           TextField(
             controller: _qtyCtrl,
             decoration: const InputDecoration(labelText: 'Quantity (pcs)', filled: true),

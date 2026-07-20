@@ -87,10 +87,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     setState(() { _loading = true; _error = null; });
 
     try {
-      final sales = ref.read(salesStreamProvider).asData?.value ?? [];
+      final allSales = ref.read(salesStreamProvider).asData?.value ?? [];
       final products = ref.read(productsStreamProvider).asData?.value ?? [];
       final expenses = ref.read(expensesStreamProvider).asData?.value ?? [];
       final range = _range;
+      final sales = allSales.where((s) =>
+          !s.isVoided && !s.isQuote &&
+          !s.date.isBefore(range.start) && !s.date.isAfter(range.end)).toList();
 
       final service = ref.read(exportServiceProvider);
       final summary = AccountingService().recomputeForPeriod(

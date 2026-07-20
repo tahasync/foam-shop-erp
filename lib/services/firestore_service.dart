@@ -136,22 +136,27 @@ class FirestoreService {
 
   // Atomic sale transaction
   Future<void> saveSaleTransaction(Sale sale, Map<String, double> deductions) async {
+    final exists = await saleExistsByUuid(sale.transactionUuid ?? sale.id);
+    if (exists) return;
     await _db.runTransaction((transaction) async {
       final saleRef = _sales.doc(sale.id);
-      transaction.set(saleRef, sale.toMap());
       for (final entry in deductions.entries) {
         final productRef = _products.doc(entry.key);
         final snap = await transaction.get(productRef);
         if (!snap.exists) throw Exception('Product ${entry.key} not found');
         final data = snap.data() as Map<String, dynamic>;
         final currentStock = (data['current_stock'] as num).toDouble();
+        if (currentStock < entry.value) {
+          throw Exception('Insufficient stock for product ${entry.key}');
+        }
         transaction.update(productRef, {'current_stock': currentStock - entry.value});
       }
+      transaction.set(saleRef, sale.toMap());
     });
   }
 
   // Atomic restock transaction
-  Future<void> restockTransaction(String productId, double restockQty, double unitCost, double amountPaid) async {
+  Future<void> restockTransaction(String productId, double restockQty, double unitCost, double amountPaid, {String supplierId = ''}) async {
     await _db.runTransaction((transaction) async {
       final productRef = _products.doc(productId);
       final snap = await transaction.get(productRef);
@@ -173,7 +178,7 @@ class FirestoreService {
       final purchase = Purchase(
         id: purchaseId,
         date: DateTime.now(),
-        supplierId: '',
+        supplierId: supplierId,
         productId: productId,
         qtyOrArea: restockQty,
         costAmount: costAmount,
