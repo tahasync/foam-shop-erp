@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏪 Foam Shop ERP
+# Foam Shop ERP
 
 **Enterprise-Grade Retail Inventory & Accounting System**
 
