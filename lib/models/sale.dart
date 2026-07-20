@@ -1,5 +1,6 @@
 class SaleLineItem {
   final String productId;
+  final String? name;
   final double? customLength;
   final double? customWidth;
   final double qtyOrArea;
@@ -9,6 +10,7 @@ class SaleLineItem {
 
   SaleLineItem({
     required this.productId,
+    this.name,
     this.customLength,
     this.customWidth,
     required this.qtyOrArea,
@@ -21,6 +23,7 @@ class SaleLineItem {
 
   Map<String, dynamic> toMap() => {
         'product_id': productId,
+        'name': name,
         'custom_length': customLength,
         'custom_width': customWidth,
         'qty_or_area': qtyOrArea,
@@ -31,6 +34,7 @@ class SaleLineItem {
 
   factory SaleLineItem.fromMap(Map<String, dynamic> map) => SaleLineItem(
         productId: map['product_id'] as String,
+        name: map['name'] as String?,
         customLength: (map['custom_length'] as num?)?.toDouble(),
         customWidth: (map['custom_width'] as num?)?.toDouble(),
         qtyOrArea: (map['qty_or_area'] as num).toDouble(),
@@ -44,6 +48,7 @@ class Sale {
   final String id;
   final DateTime date;
   final String customerId;
+  final String? customerName;
   final List<SaleLineItem> lineItems;
   final double paid;
   final double? discountAmount;
@@ -59,6 +64,7 @@ class Sale {
     required this.id,
     required this.date,
     required this.customerId,
+    this.customerName,
     required this.lineItems,
     required this.paid,
     this.discountAmount,
@@ -80,6 +86,7 @@ class Sale {
         'id': id,
         'date': date.toIso8601String(),
         'customer_id': customerId,
+        'customer_name': customerName,
         'line_items': lineItems.map((li) => li.toMap()).toList(),
         'paid': paid,
         'discount_amount': discountAmount,
@@ -114,6 +121,7 @@ class Sale {
       id: map['id'] as String,
       date: DateTime.parse(map['date'] as String),
       customerId: map['customer_id'] as String,
+      customerName: map['customer_name'] as String?,
       lineItems: items,
       paid: (map['paid'] as num).toDouble(),
       discountAmount: (map['discount_amount'] as num?)?.toDouble(),

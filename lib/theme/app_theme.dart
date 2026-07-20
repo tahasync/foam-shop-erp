@@ -157,7 +157,19 @@ class AppTheme {
       outlineVariant: const Color(0x29FFFFFF),
       shadow: Colors.black.withValues(alpha: 0.3),
     );
-    return _base(cs, AppColors._dark);
+    return _base(cs, AppColors._dark).copyWith(
+      appBarTheme: AppBarTheme(
+        backgroundColor: cs.surface,
+        foregroundColor: cs.onSurface,
+        elevation: 0,
+        titleTextStyle: TextStyle(
+          color: cs.onSurface,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+        iconTheme: IconThemeData(color: cs.onSurface),
+      ),
+    );
   }
 
   static ThemeData _base(ColorScheme cs, AppColors appColors) {
@@ -173,6 +185,9 @@ class AppTheme {
         titleMedium: jakarta.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         titleSmall: jakarta.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         labelLarge: jakarta.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+      ).apply(
+        bodyColor: cs.onSurface,
+        displayColor: cs.onSurface,
       ),
       scaffoldBackgroundColor: cs.surface,
       extensions: [appColors],
@@ -233,6 +248,16 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: inter.labelSmall?.copyWith(fontWeight: FontWeight.w700),
         unselectedLabelStyle: inter.labelSmall,
+      ),
+      dropdownMenuTheme: DropdownMenuThemeData(
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(cs.surfaceContainerHigh),
+          elevation: const WidgetStatePropertyAll(8),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        textStyle: TextStyle(color: cs.onSurface, fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }

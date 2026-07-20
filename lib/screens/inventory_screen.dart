@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 import '../providers/firebase_providers.dart';
+import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
@@ -29,6 +30,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       floatingActionButton: SizedBox(
         width: 46, height: 46,
         child: FloatingActionButton(
+          key: const ValueKey('add_product_fab'),
           backgroundColor: AppTheme.amber,
           foregroundColor: Colors.white,
           elevation: 8,
@@ -43,10 +45,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         data: (products) {
           var filtered = products.where((p) {
             if (_typeFilter == 'Low Stock' && !p.isLowStock) return false;
-            if (_typeFilter != 'All' && _typeFilter != 'Low Stock' && p.type != _typeFilter) return false;
             if (_searchCtrl.text.isNotEmpty && !p.name.toLowerCase().contains(_searchCtrl.text.toLowerCase())) return false;
             return true;
           }).toList();
+
+          final totalValue = products.fold(0.0, (s, p) => s + (p.currentStock * p.costPrice));
 
           return Column(children: [
             Padding(
@@ -70,13 +73,31 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: ac.profitTint,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                Icon(Icons.account_balance_rounded, size: 16, color: ac.profitFg),
+                const SizedBox(width: 8),
+                Text('Total Inventory Value: ',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ac.profitFg)),
+                Text('Rs ${totalValue.toStringAsFixed(0)}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
+                        fontFeatures: [FontFeature('tnum')], color: ac.profitFg)),
+              ]),
+            ),
+            const SizedBox(height: 6),
             SizedBox(
               height: 32,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: ['All', 'Foam', 'Mattress', 'Sponge', 'Low Stock'].map((t) => Padding(
+                children: ['All', 'Low Stock'].map((t) => Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () => setState(() => _typeFilter = t),
@@ -122,278 +143,416 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ListTile(leading: const Icon(Icons.archive_rounded), title: const Text('Archive'), onTap: () async {
         Navigator.pop(ctx);
         await ref.read(firestoreServiceProvider).archiveProduct(product.id);
+        if (!mounted) return;
       }),
     ])));
   }
 
   void _addProduct() {
-    final fk = GlobalKey<FormState>();
-    String name = '', type = 'Foam', unitType = 'per_piece';
-    double sl = 0, sw = 0, th = 0, de = 0, up = 0, cp = 0, cs = 0, lt = 0;
-    final cs2 = Theme.of(context).colorScheme;
-    showDialog(context: context, builder: (ctx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.95,
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-        padding: const EdgeInsets.all(20),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Add Product', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold, color: cs2.onSurface,
-          )),
-          const SizedBox(height: 16),
-          Expanded(child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Form(key: fk, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Name', filled: true),
-                onSaved: (v) => name = v ?? '',
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: DropdownButtonFormField<String>(
-                  initialValue: type,
-                  decoration: const InputDecoration(labelText: 'Type', filled: true),
-                  items: 'Foam,Mattress,Sponge,Pillow,Custom Cut'.split(',').map((t) =>
-                    DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) => type = v ?? 'Foam',
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: DropdownButtonFormField<String>(
-                  initialValue: unitType,
-                  decoration: const InputDecoration(labelText: 'Unit Type', filled: true),
-                  items: const [
-                    DropdownMenuItem(value: 'per_piece', child: Text('Per Piece')),
-                    DropdownMenuItem(value: 'per_sqft', child: Text('Per Sq.ft')),
-                  ],
-                  onChanged: (v) => unitType = v ?? 'per_piece',
-                )),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => sl = double.tryParse(v ?? '') ?? 0,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => sw = double.tryParse(v ?? '') ?? 0,
-                )),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Thickness', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => th = double.tryParse(v ?? '') ?? 0,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Density', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => de = double.tryParse(v ?? '') ?? 0,
-                )),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => cp = double.tryParse(v ?? '') ?? 0,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Sell Price (PKR)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => up = double.tryParse(v ?? '') ?? 0,
-                  validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Enter valid price' : null,
-                )),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Current Stock', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => cs = double.tryParse(v ?? '') ?? 0,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(
-                  decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => lt = double.tryParse(v ?? '') ?? 0,
-                )),
-              ]),
-            ])),
-          )),
-          const SizedBox(height: 16),
-          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: cs2.onSurfaceVariant))),
-            const SizedBox(width: 12),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                if (!fk.currentState!.validate()) return;
-                fk.currentState!.save();
-                final svc = ref.read(firestoreServiceProvider);
-                await svc.addProduct(Product(id: svc.generateId(), name: name, type: type,
-                    sizeLength: sl, sizeWidth: sw, thickness: th, density: de,
-                    unitType: unitType, unitPrice: up, costPrice: cp,
-                    currentStock: cs, lowStockThreshold: lt));
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ]),
-        ]),
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _AddProductDialog(
+        onSave: (Product product) async {
+          final svc = ref.read(firestoreServiceProvider);
+          await svc.addProduct(product.copyWith(id: svc.generateId()));
+        },
       ),
-    ));
+    );
   }
 
   void _edit(Product product) {
-    final fk = GlobalKey<FormState>();
-    String name = product.name, type = product.type, unitType = product.unitType;
-    double sl = product.sizeLength, sw = product.sizeWidth, th = product.thickness;
-    double de = product.density, up = product.unitPrice, cp = product.costPrice, lt = product.lowStockThreshold;
-    final cs2 = Theme.of(context).colorScheme;
-    showDialog(context: context, builder: (ctx) => Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.95,
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-        padding: const EdgeInsets.all(20),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Edit Product', style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold, color: cs2.onSurface,
-          )),
-          const SizedBox(height: 16),
-          Expanded(child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Form(key: fk, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              TextFormField(initialValue: name,
-                decoration: const InputDecoration(labelText: 'Name', filled: true),
-                onSaved: (v) => name = v ?? name),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: DropdownButtonFormField<String>(
-                  initialValue: type,
-                  decoration: const InputDecoration(labelText: 'Type', filled: true),
-                  items: 'Foam,Mattress,Sponge,Pillow,Custom Cut'.split(',').map((t) =>
-                    DropdownMenuItem(value: t, child: Text(t))).toList(),
-                  onChanged: (v) => type = v ?? type,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: DropdownButtonFormField<String>(
-                  initialValue: unitType,
-                  decoration: const InputDecoration(labelText: 'Unit Type', filled: true),
-                  items: const [
-                    DropdownMenuItem(value: 'per_piece', child: Text('Per Piece')),
-                    DropdownMenuItem(value: 'per_sqft', child: Text('Per Sq.ft')),
-                  ],
-                  onChanged: (v) => unitType = v ?? unitType,
-                )),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(initialValue: sl.toString(),
-                  decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => sl = double.tryParse(v ?? '') ?? sl)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(initialValue: sw.toString(),
-                  decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => sw = double.tryParse(v ?? '') ?? sw)),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(initialValue: th.toString(),
-                  decoration: const InputDecoration(labelText: 'Thickness', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => th = double.tryParse(v ?? '') ?? th)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(initialValue: de.toString(),
-                  decoration: const InputDecoration(labelText: 'Density', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => de = double.tryParse(v ?? '') ?? de)),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(initialValue: cp.toString(),
-                  decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => cp = double.tryParse(v ?? '') ?? cp)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(initialValue: up.toString(),
-                  decoration: const InputDecoration(labelText: 'Sell Price (PKR)', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => up = double.tryParse(v ?? '') ?? up)),
-              ]),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(child: TextFormField(initialValue: lt.toString(),
-                  decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true),
-                  keyboardType: TextInputType.number,
-                  onSaved: (v) => lt = double.tryParse(v ?? '') ?? lt)),
-              ]),
-            ])),
-          )),
-          const SizedBox(height: 16),
-          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: cs2.onSurfaceVariant))),
-            const SizedBox(width: 12),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                fk.currentState!.save();
-                await ref.read(firestoreServiceProvider).updateProduct(product.copyWith(
-                    name: name, type: type, sizeLength: sl, sizeWidth: sw, thickness: th,
-                    density: de, unitType: unitType, unitPrice: up, costPrice: cp,
-                    lowStockThreshold: lt));
-                if (ctx.mounted) Navigator.pop(ctx);
-              },
-              child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ]),
-        ]),
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _EditProductDialog(
+        product: product,
+        onSave: (Product updated) async {
+          await ref.read(firestoreServiceProvider).updateProduct(updated);
+        },
       ),
-    ));
+    );
   }
 
   void _restock(Product product) {
-    final qc = TextEditingController(); final cc = TextEditingController(); final pc = TextEditingController();
-    final svc = ref.read(firestoreServiceProvider);
-      showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('Restock'),
-      content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('${product.name} | Current: ${product.stockLabel}'),
-        const SizedBox(height: 12),
-        TextField(controller: qc, decoration: InputDecoration(labelText: 'Quantity', suffixText: product.unitType == 'per_sqft' ? 'sq.ft' : 'pcs', filled: true), keyboardType: TextInputType.number),
-        TextField(controller: cc, decoration: const InputDecoration(labelText: 'Cost Amount (PKR)', filled: true), keyboardType: TextInputType.number),
-        TextField(controller: pc, decoration: const InputDecoration(labelText: 'Amount Paid (PKR)', filled: true), keyboardType: TextInputType.number),
-      ])),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => RestockDialog(key: const ValueKey('restock_dialog_modal'), product: product),
+    );
+  }
+}
+
+class _AddProductDialog extends StatefulWidget {
+  final Future<void> Function(Product product) onSave;
+  const _AddProductDialog({required this.onSave});
+
+  @override
+  State<_AddProductDialog> createState() => _AddProductDialogState();
+}
+
+class _AddProductDialogState extends State<_AddProductDialog> {
+  final _nc = TextEditingController();
+  final _lc = TextEditingController();
+  final _wc = TextEditingController();
+  final _tc = TextEditingController();
+  final _cc = TextEditingController();
+  final _sc = TextEditingController();
+  final _thc = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nc.dispose();
+    _lc.dispose();
+    _wc.dispose();
+    _tc.dispose();
+    _cc.dispose();
+    _sc.dispose();
+    _thc.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_saving) return;
+    if (_nc.text.trim().isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _saving = true);
+
+    try {
+      await widget.onSave(Product(
+        id: '',
+        name: _nc.text.trim(),
+        type: '',
+        sizeLength: double.tryParse(_lc.text) ?? 0,
+        sizeWidth: double.tryParse(_wc.text) ?? 0,
+        thickness: double.tryParse(_tc.text) ?? 0,
+        density: 0,
+        unitType: 'per_sqft',
+        unitPrice: 0,
+        costPrice: double.tryParse(_cc.text) ?? 0,
+        currentStock: double.tryParse(_sc.text) ?? 0,
+        lowStockThreshold: double.tryParse(_thc.text) ?? 0,
+      ));
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs2 = Theme.of(context).colorScheme;
+    final costPrice = double.tryParse(_cc.text) ?? 0;
+    final stock = double.tryParse(_sc.text) ?? 0;
+    final totalCost = costPrice * stock;
+    return AlertDialog(
+      key: const ValueKey('add_product_dialog_modal'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Add Product', style: TextStyle(fontWeight: FontWeight.bold)),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: _nc, decoration: const InputDecoration(labelText: 'Name', filled: true)),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: TextField(controller: _lc, decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true), keyboardType: TextInputType.number)),
+            const SizedBox(width: 12),
+            Expanded(child: TextField(controller: _wc, decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true), keyboardType: TextInputType.number)),
+          ]),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: TextField(controller: _tc, decoration: const InputDecoration(labelText: 'Thickness (in)', filled: true), keyboardType: TextInputType.number)),
+            const SizedBox(width: 12),
+            Expanded(child: TextField(controller: _cc, decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
+          ]),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: TextField(controller: _sc, decoration: const InputDecoration(labelText: 'Current Stock', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
+            const SizedBox(width: 12),
+            Expanded(child: TextField(controller: _thc, decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true), keyboardType: TextInputType.number)),
+          ]),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: cs2.primaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8)),
+            child: Text('Total Cost for this lot: Rs ${totalCost.toStringAsFixed(0)}',
+                style: TextStyle(color: cs2.primary, fontWeight: FontWeight.bold, fontFeatures: [FontFeature('tnum')])),
+          ),
+        ]),
+      ),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () async {
-          final q = double.tryParse(qc.text) ?? 0; final c = double.tryParse(cc.text) ?? 0; final p = double.tryParse(pc.text) ?? 0;
-          if (q <= 0 || c <= 0) return;
-          final unitCost = c / q;
-          await svc.restockTransaction(product.id, q, unitCost, p);
-          if (ctx.mounted) Navigator.pop(ctx);
-        }, child: const Text('Restock')),
+        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton.icon(
+          onPressed: _saving ? null : _submit,
+          icon: _saving
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.check),
+          label: Text(_saving ? 'Saving...' : 'Add Product'),
+        ),
       ],
-    )).then((_) { qc.dispose(); cc.dispose(); pc.dispose(); });
+    );
+  }
+}
+
+class _EditProductDialog extends StatefulWidget {
+  final Product product;
+  final Future<void> Function(Product product) onSave;
+  const _EditProductDialog({required this.product, required this.onSave});
+
+  @override
+  State<_EditProductDialog> createState() => _EditProductDialogState();
+}
+
+class _EditProductDialogState extends State<_EditProductDialog> {
+  late final TextEditingController _nc;
+  late final TextEditingController _lc;
+  late final TextEditingController _wc;
+  late final TextEditingController _tc;
+  late final TextEditingController _cc;
+  late final TextEditingController _sc;
+  late final TextEditingController _thc;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.product;
+    _nc = TextEditingController(text: p.name);
+    _lc = TextEditingController(text: p.sizeLength.toString());
+    _wc = TextEditingController(text: p.sizeWidth.toString());
+    _tc = TextEditingController(text: p.thickness.toString());
+    _cc = TextEditingController(text: p.costPrice.toString());
+    _sc = TextEditingController(text: p.currentStock.toString());
+    _thc = TextEditingController(text: p.lowStockThreshold.toString());
+  }
+
+  @override
+  void dispose() {
+    _nc.dispose();
+    _lc.dispose();
+    _wc.dispose();
+    _tc.dispose();
+    _cc.dispose();
+    _sc.dispose();
+    _thc.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_saving) return;
+    if (_nc.text.trim().isEmpty) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _saving = true);
+
+    try {
+      await widget.onSave(widget.product.copyWith(
+        name: _nc.text.trim(),
+        sizeLength: double.tryParse(_lc.text) ?? widget.product.sizeLength,
+        sizeWidth: double.tryParse(_wc.text) ?? widget.product.sizeWidth,
+        thickness: double.tryParse(_tc.text) ?? widget.product.thickness,
+        costPrice: double.tryParse(_cc.text) ?? widget.product.costPrice,
+        currentStock: double.tryParse(_sc.text) ?? widget.product.currentStock,
+        lowStockThreshold: double.tryParse(_thc.text) ?? widget.product.lowStockThreshold,
+      ));
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs2 = Theme.of(context).colorScheme;
+    final costPrice = double.tryParse(_cc.text) ?? 0;
+    final stock = double.tryParse(_sc.text) ?? 0;
+    final totalCost = costPrice * stock;
+    return AlertDialog(
+      key: const ValueKey('edit_product_dialog_modal'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text('Edit Product', style: TextStyle(fontWeight: FontWeight.bold)),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: _nc, decoration: const InputDecoration(labelText: 'Name', filled: true)),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: TextField(controller: _lc, decoration: const InputDecoration(labelText: 'Size Length (in)', filled: true), keyboardType: TextInputType.number)),
+            const SizedBox(width: 12),
+            Expanded(child: TextField(controller: _wc, decoration: const InputDecoration(labelText: 'Size Width (in)', filled: true), keyboardType: TextInputType.number)),
+          ]),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: TextField(controller: _tc, decoration: const InputDecoration(labelText: 'Thickness (in)', filled: true), keyboardType: TextInputType.number)),
+            const SizedBox(width: 12),
+            Expanded(child: TextField(controller: _cc, decoration: const InputDecoration(labelText: 'Buy Price / Cost (PKR)', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
+          ]),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: TextField(controller: _sc, decoration: const InputDecoration(labelText: 'Current Stock', filled: true), keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
+            const SizedBox(width: 12),
+            Expanded(child: TextField(controller: _thc, decoration: const InputDecoration(labelText: 'Low Stock Threshold', filled: true), keyboardType: TextInputType.number)),
+          ]),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: cs2.primaryContainer.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8)),
+            child: Text('Total Cost for this lot: Rs ${totalCost.toStringAsFixed(0)}',
+                style: TextStyle(color: cs2.primary, fontWeight: FontWeight.bold, fontFeatures: [FontFeature('tnum')])),
+          ),
+        ]),
+      ),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
+      actions: [
+        TextButton(onPressed: _saving ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton.icon(
+          onPressed: _saving ? null : _submit,
+          icon: _saving
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.check),
+          label: Text(_saving ? 'Saving...' : 'Save Product'),
+        ),
+      ],
+    );
+  }
+}
+
+class RestockDialog extends StatefulWidget {
+  final Product product;
+  const RestockDialog({super.key, required this.product});
+
+  @override
+  State<RestockDialog> createState() => _RestockDialogState();
+}
+
+class _RestockDialogState extends State<RestockDialog> {
+  late TextEditingController _qtyCtrl;
+  late TextEditingController _unitCostCtrl;
+  late TextEditingController _paidCtrl;
+  bool _userEditedPaid = false;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _qtyCtrl = TextEditingController(text: '1');
+    _unitCostCtrl = TextEditingController(text: widget.product.costPrice.toStringAsFixed(0));
+    _paidCtrl = TextEditingController();
+    _recalc();
+    _qtyCtrl.addListener(_onFieldChanged);
+    _unitCostCtrl.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    if (!_userEditedPaid) _recalc();
+  }
+
+  void _recalc() {
+    final q = double.tryParse(_qtyCtrl.text) ?? 0;
+    final uc = double.tryParse(_unitCostCtrl.text) ?? 0;
+    _paidCtrl.text = (q * uc) > 0 ? (q * uc).toStringAsFixed(0) : '';
+  }
+
+  @override
+  void dispose() {
+    _qtyCtrl.removeListener(_onFieldChanged);
+    _unitCostCtrl.removeListener(_onFieldChanged);
+    _qtyCtrl.dispose();
+    _unitCostCtrl.dispose();
+    _paidCtrl.dispose();
+    super.dispose();
+  }
+
+  double get _total => (double.tryParse(_qtyCtrl.text) ?? 0) * (double.tryParse(_unitCostCtrl.text) ?? 0);
+
+  Future<void> _submit() async {
+    final q = double.tryParse(_qtyCtrl.text) ?? 0;
+    if (q <= 0) return;
+
+    FocusScope.of(context).unfocus();
+    setState(() => _submitting = true);
+
+    try {
+      final uc = double.tryParse(_unitCostCtrl.text) ?? widget.product.costPrice;
+      final paid = double.tryParse(_paidCtrl.text) ?? 0;
+      final svc = FirestoreService();
+      await svc.restockTransaction(widget.product.id, q, uc, paid);
+      if (!mounted) return;
+      Navigator.pop(context);
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      key: const ValueKey('restock_dialog_modal'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text('Restock: ${widget.product.name}', style: TextStyle(fontWeight: FontWeight.bold, color: cs.onSurface)),
+      content: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Current stock: ${widget.product.stockLabel}',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _qtyCtrl,
+            decoration: const InputDecoration(labelText: 'Quantity (pcs)', filled: true),
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _unitCostCtrl,
+            decoration: const InputDecoration(labelText: 'Unit Cost / Buying Price (PKR)', filled: true),
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _paidCtrl,
+            decoration: const InputDecoration(labelText: 'Total Amount Paid (PKR)', filled: true),
+            keyboardType: TextInputType.number,
+            onChanged: (_) {
+              _userEditedPaid = true;
+              setState(() {});
+            },
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: cs.primaryContainer.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('Calculated Total:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Rs ${_total.toStringAsFixed(0)}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: cs.primary, fontSize: 16,
+                      fontFeatures: [FontFeature('tnum')])),
+            ]),
+          ),
+        ]),
+      ),
+      actions: [
+        TextButton(onPressed: _submitting ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton.icon(
+          onPressed: _submitting ? null : _submit,
+          icon: _submitting
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.add_shopping_cart_rounded),
+          label: Text(_submitting ? 'Restocking...' : 'Restock'),
+        ),
+      ],
+    );
   }
 }
 
@@ -406,6 +565,7 @@ class _ProdCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
+    final totalValue = product.currentStock * product.costPrice;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -430,7 +590,7 @@ class _ProdCard extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(product.name, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
             const SizedBox(height: 2),
-            Text('${product.sizeLength.toStringAsFixed(0)}ft \u00d7 ${product.sizeWidth.toStringAsFixed(0)}ft \u00b7 ${product.thickness.toStringAsFixed(0)}in${product.density > 0 ? ' \u00b7 Density ${product.density.toStringAsFixed(0)}' : ''}',
+            Text('${product.sizeLength.toStringAsFixed(0)}in \u00d7 ${product.sizeWidth.toStringAsFixed(0)}in \u00b7 ${product.thickness.toStringAsFixed(0)}in',
                 style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
             const SizedBox(height: 6),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -444,9 +604,13 @@ class _ProdCard extends StatelessWidget {
                     style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
                         color: product.isLowStock ? ac.expenseFg : ac.profitFg)),
               ),
-              Text('Rs ${product.unitPrice.toStringAsFixed(0)}/${product.unitType == 'per_sqft' ? 'sq.ft' : 'pc'}',
+              Text('Rs ${product.costPrice.toStringAsFixed(0)}/pc',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
             ]),
+            const SizedBox(height: 4),
+            Text('Total Value: Rs ${totalValue.toStringAsFixed(0)}',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: cs.primary,
+                    fontFeatures: [FontFeature('tnum')])),
           ])),
         ]),
       ),

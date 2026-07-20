@@ -48,16 +48,16 @@ class Product {
   factory Product.fromMap(Map<String, dynamic> map) => Product(
         id: map['id'] as String,
         name: map['name'] as String,
-        type: map['type'] as String,
-        sizeLength: (map['size_length'] as num).toDouble(),
-        sizeWidth: (map['size_width'] as num).toDouble(),
-        thickness: (map['thickness'] as num).toDouble(),
-        density: (map['density'] as num).toDouble(),
-        unitType: map['unit_type'] as String,
-        unitPrice: (map['unit_price'] as num).toDouble(),
+        type: map['type'] as String? ?? '',
+        sizeLength: (map['size_length'] as num?)?.toDouble() ?? 0,
+        sizeWidth: (map['size_width'] as num?)?.toDouble() ?? 0,
+        thickness: (map['thickness'] as num?)?.toDouble() ?? 0,
+        density: (map['density'] as num?)?.toDouble() ?? 0,
+        unitType: map['unit_type'] as String? ?? 'per_sqft',
+        unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0,
         costPrice: (map['cost_price'] as num?)?.toDouble() ?? 0,
-        currentStock: (map['current_stock'] as num).toDouble(),
-        lowStockThreshold: (map['low_stock_threshold'] as num).toDouble(),
+        currentStock: (map['current_stock'] as num?)?.toDouble() ?? 0,
+        lowStockThreshold: (map['low_stock_threshold'] as num?)?.toDouble() ?? 0,
         isArchived: map['is_archived'] as bool? ?? false,
       );
 
@@ -83,10 +83,18 @@ class Product {
         isArchived: isArchived ?? this.isArchived,
       );
 
+  double get effectivePrice {
+    if (unitPrice > 0) return unitPrice;
+    if (costPrice > 0) return costPrice;
+    return 0.0;
+  }
+
+  String get unitLabel => unitType == 'per_sqft' ? 'sq.ft' : 'pcs';
+
   bool get isLowStock => currentStock <= lowStockThreshold;
 
   String get stockLabel {
     if (unitType == 'per_sqft') return '${currentStock.toStringAsFixed(1)} sq.ft';
-    return currentStock.toStringAsFixed(0);
+    return '${currentStock.toStringAsFixed(0)} pcs';
   }
 }

@@ -1,4 +1,4 @@
-<div align="center">
+# Asif Foam Center — Flutter ERP
 
 # Foam Shop ERP
 
@@ -12,244 +12,292 @@
 [![Android](https://img.shields.io/badge/Platform-Android%205.0+-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 
 </div>
+Complete inventory management, point-of-sale, and customer ledger (Khata) system built with Flutter + Firebase.
 
 ---
 
-## 📋 Overview
+## Project Overview
 
-Foam Shop ERP is a **production-ready mobile retail management system** built for foam and mattress businesses. It features a **real-time double-entry accounting engine** with **Weighted Average Cost (WAC)** valuation, automated **COGS snapshotting**, and **atomic Firestore transactions** — all wrapped in a polished Material 3 UI with full dark mode support.
+A single-user ERP for a foam (polyurethane foam) shop. The app manages products (foam sheets/blocks by size, thickness, density), tracks inventory stock, records sales with partial/full payment, maintains customer Khata ledgers, and logs supplier purchases and operational expenses.
 
-| Module | Scope | Integration |
-|:------:|:-----|:-----------:|
-| **📊 Dashboard** | Live Revenue, COGS, Profit, Cash, Inventory Value | Riverpod + AccountingService |
-| **🛒 Sales** | Cash/credit, discounts, quotes, stock deduction | Atomic Firestore transactions |
-| **📦 Inventory** | WAC restock, buy/sell price, low stock alerts | Weighted average cost engine |
-| **👤 Customer Khata** | Ledger, baqaya, recovery, payment history | Real-time streams |
-| **🏭 Supplier Khata** | Purchases, payments, payable tracking | Real-time streams |
-| **📈 Reports** | Daily/Weekly/Monthly/Yearly + CSV/PDF export | ExportService |
+**Tech Stack**
+- Flutter 3.x (Dart)
+- Firebase Auth (email/password)
+- Cloud Firestore
+- Riverpod (state management)
+- Material 3 (M3 theming)
 
 ---
 
-## ✨ Features
-
-- **🔢 Double-Entry Accounting** — Revenue, COGS, Gross Profit, Net Profit with `costPriceAtSale` snapshotting
-- **⚖️ Weighted Average Cost (WAC)** — Auto-calculated on every restock, zero-value fallback protection
-- **📸 COGS Snapshotting** — `costPriceAtSale` frozen at checkout — historical reports never drift
-- **🧮 Non-Negative Ledgers** — Baqaya and Supplier Payable floored at `≥ 0` with `sanitizeDouble()` guards
-- **🔐 Atomic Transactions** — Every sale, restock, void, and recovery wrapped in `runTransaction`
-- **🆔 Idempotency** — `transactionUuid` prevents duplicate invoice processing
-- **📱 Public Downloads Export** — CSV/PDF saved directly to device Downloads folder
-- **🌙 Material 3 Dark Mode** — WCAG-compliant contrast, persistent theme selection
-- **🤖 CI/CD** — Auto-build APK on every push via GitHub Actions
-
----
-
-## 🗂️ Project Structure
+## App Architecture
 
 ```
-foam-shop-erp/
-├── lib/
-│   ├── main.dart                          # App entry + Firebase init
-│   ├── firebase_options.dart              # Firebase config (auto-generated)
-│   ├── models/                            # Data models
-│   │   ├── sale.dart                      # SaleLineItem with costPriceAtSale
-│   │   ├── product.dart                   # costPrice + unitPrice + WAC
-│   │   ├── customer.dart
-│   │   ├── supplier.dart
-│   │   ├── purchase.dart
-│   │   ├── expense.dart
-│   │   ├── payment.dart
-│   │   ├── supplier_payment.dart
-│   │   └── opening_balance.dart
-│   ├── services/                          # Business logic
-│   │   ├── accounting_service.dart        # Double-entry engine + sanitizeDouble
-│   │   ├── firestore_service.dart         # Atomic CRUD with runTransaction
-│   │   ├── auth_service.dart              # Firebase Auth
-│   │   └── export_service.dart            # CSV/PDF → public Downloads
-│   ├── providers/                         # Riverpod state providers
-│   ├── screens/
-│   │   ├── dashboard_screen.dart          # Live accounting summary cards
-│   │   ├── sales_entry_screen.dart        # Sale form with costPriceAtSale
-│   │   ├── inventory_screen.dart          # Product CRUD + WAC restock
-│   │   ├── customer_khata_screen.dart
-│   │   ├── supplier_khata_screen.dart
-│   │   ├── customer_recovery_screen.dart
-│   │   ├── expense_sheet_screen.dart
-│   │   ├── billing_screen.dart            # PDF receipt + printing
-│   │   ├── reports_screen.dart            # Period filter reports
-│   │   ├── export_screen.dart             # Export UI with date range
-│   │   ├── account_settings_screen.dart
-│   │   └── sign_in_screen.dart
-│   ├── theme/                             # Material 3 + AppColors extension
-│   └── widgets/
-│       └── sync_status_indicator.dart
-├── .github/workflows/
-│   ├── build.yml                          # Auto-build on push to main
-│   └── release.yml                        # Tag-triggered GitHub Release
-├── android/                               # Android native shell
-├── ios/                                   # iOS native shell
-├── firestore.rules                        # Security rules (anti-negative stock)
-├── pubspec.yaml
-└── README.md
+lib/
+├── main.dart                    # App entry, Firebase init, router
+├── theme/
+│   └── app_theme.dart           # Light/dark M3 palette, custom colors
+├── models/
+│   ├── product.dart             # Product (dimensions, unitPrice, costPrice, stock)
+│   ├── customer.dart            # Customer (name, phone)
+│   ├── supplier.dart            # Supplier (name, phone)
+│   ├── sale.dart                # Sale + SaleLineItem (qty, salePrice, discounts)
+│   ├── payment.dart             # Customer payment recovery
+│   ├── purchase.dart            # Supplier purchase (stock restock)
+│   ├── expense.dart             # Operational expense
+│   ├── supplier_payment.dart    # Supplier payment
+│   └── opening_balance.dart     # Capital / opening balance entry
+├── services/
+│   └── firestore_service.dart   # All Firestore CRUD + atomic transactions
+├── providers/
+│   ├── firebase_providers.dart  # FirestoreService provider
+│   ├── product_provider.dart    # Products stream
+│   ├── customer_provider.dart   # Customers stream
+│   ├── sale_provider.dart       # Sales stream
+│   ├── payment_provider.dart    # Payments stream
+│   ├── sales_provider.dart      # Sale cart state (CartItem, SalesNotifier)
+│   └── dashboard_provider.dart  # Aggregated accounting summaries
+├── screens/
+│   ├── login_screen.dart
+│   ├── home_screen.dart         # Dashboard with summary cards
+│   ├── inventory_screen.dart    # Product list, add/edit, restock
+│   ├── sales_entry_screen.dart  # New Sale (product picker, cart, save)
+│   ├── customer_khata_screen.dart # Customer ledger (balance, transactions)
+│   ├── customer_recovery_screen.dart
+│   ├── supplier_khata_screen.dart
+│   └── ... other screens
 ```
 
 ---
 
-## 🚀 Getting Started
+## Models
 
-### Prerequisites
+### Product (`lib/models/product.dart`)
 
-| Requirement | Version | Download |
-|:------------|:-------:|:---------|
-| Flutter SDK | 3.4.0+ | [docs.flutter.dev](https://docs.flutter.dev/get-started/install) |
-| Dart | 3.12+ | Bundled with Flutter |
-| Firebase Project | — | [console.firebase.google.com](https://console.firebase.google.com) |
-| Android Studio | 2024+ | [developer.android.com](https://developer.android.com/studio) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Firestore doc ID |
+| `name` | `String` | Product name |
+| `type` | `String` | Product type/category |
+| `sizeLength`, `sizeWidth` | `double` | Dimensions in inches |
+| `thickness` | `double` | Foam thickness |
+| `density` | `double` | Foam density |
+| `unitType` | `String` | `'per_sqft'` or `'pcs'` |
+| `unitPrice` | `double` | Default selling price |
+| `costPrice` | `double` | Supplier buying cost |
+| `currentStock` | `double` | Available stock |
+| `lowStockThreshold` | `double` | Min stock alert |
+| `isArchived` | `bool` | Soft delete flag |
 
-### 1. Clone
+**Getters:**
+- `effectivePrice` — Returns `unitPrice` if > 0, else `costPrice`, else 0
+- `unitLabel` — Returns `'sq.ft'` or `'pcs'` based on `unitType`
+- `isLowStock` — `currentStock <= lowStockThreshold`
+- `stockLabel` — Formatted stock string with unit
+
+### Customer (`lib/models/customer.dart`)
+
+| Field | Type |
+|-------|------|
+| `id` | `String` |
+| `name` | `String` |
+| `phone` | `String` |
+| `isArchived` | `bool` |
+
+### SaleLineItem (`lib/models/sale.dart`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `productId` | `String` | Product reference |
+| `name` | `String?` | Snapshot name |
+| `qtyOrArea` | `double` | Quantity / square footage |
+| `salePrice` | `double` | Per-unit selling price |
+| `lineDiscountAmount` | `double` | Per-item discount |
+| `costPriceAtSale` | `double` | Cost at time of sale |
+| `*lineTotal` | getter | `(qtyOrArea × salePrice) - lineDiscountAmount` |
+
+### Sale (`lib/models/sale.dart`)
+
+| Field | Type |
+|-------|------|
+| `id` | `String` |
+| `date` | `DateTime` |
+| `customerId` | `String` |
+| `customerName` | `String?` |
+| `lineItems` | `List<SaleLineItem>` |
+| `paid` | `double` |
+| `discountAmount / discountPercent` | `double?` |
+| `deliveryCharge / cuttingCharge` | `double?` |
+| `isVoided` | `bool` |
+| `isQuote` | `bool` |
+
+**Getters:** `subtotal`, `totalDiscount`, `amount`, `balance`
+
+### Payment (`lib/models/payment.dart`)
+
+| Field | Type |
+|-------|------|
+| `id` | `String` |
+| `date` | `DateTime` |
+| `customerId` | `String` |
+| `amountCollected` | `double` |
+
+---
+
+## Firestore Structure
+
+```
+users/{uid}/
+  products/{id}          # Product documents
+  customers/{id}         # Customer documents
+  suppliers/{id}         # Supplier documents
+  sales/{id}             # Sale documents
+  purchases/{id}         # Purchase / restock documents
+  payments/{id}          # Customer payment recovery
+  expenses/{id}          # Operational expenses
+  supplier_payments/{id} # Supplier payments
+  opening_balances/{id}  # Capital entries
+```
+
+### Atomic Transactions
+
+**`saveSaleTransaction(sale, deductions)`**
+1. Writes the Sale document
+2. Deducts `currentStock` for each product atomically
+
+**`restockTransaction(productId, qty, unitCost, amountPaid)`**
+1. Updates product `currentStock` and `costPrice` (weighted average)
+2. Creates a Purchase record
+
+**`voidSale(saleId, reason)`**
+1. Marks sale as voided
+2. Restores stock atomically
+
+---
+
+## Cart & Sales Engine (`lib/providers/sales_provider.dart`)
+
+### CartItem
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `product` | `Product` | The product reference |
+| `quantity` | `int` | Quantity in cart |
+| `salePrice` | `double` | Editable per-unit selling price |
+| `*lineTotal` | getter | `quantity × salePrice` |
+
+### SalesNotifier
+
+| Method | Description |
+|--------|-------------|
+| `addToCart(product)` | Adds or increments cart item (initial `salePrice = product.effectivePrice`) |
+| `removeFromCart(productId)` | Removes item |
+| `changeQty(productId, delta)` | Increments/decrements quantity (clamped 1..stock) |
+| `updateItemPrice(productId, newPrice)` | Updates per-unit selling price for a cart item |
+| `setCustomer(name)` | Sets customer name |
+| `clearCart()` | Empties cart |
+
+---
+
+## Selling Flow
+
+1. Open **New Sale**
+2. (Optional) Tap "Change" to set customer name
+3. Tap a product from the product list → added to cart with `effectivePrice` pre-filled
+4. Edit the **Selling Price** (PKR/unit) directly in the cart item
+5. Adjust **Quantity** with `−` / `+` buttons
+6. Enter **Paid (PKR)** amount
+7. Balance auto-calculates as `subtotal - paid`
+8. Tap **Save Sale**:
+   - Writes Sale document with all line items
+   - Deducts stock atomically
+   - Creates a Payment record for the paid amount
+   - Clears cart
+9. Navigate to **Customer Khata** to see updated outstanding balance
+
+---
+
+## Khata (Customer Ledger)
+
+### CustomerKhataScreen
+- Lists all customers with computed `balance = sum(sale.amount) - sum(payment.amountCollected)`
+- Tapping a customer opens detail view showing:
+  - **Outstanding Baqaya** (total)
+  - **Transaction History** (sales + payments, sorted descending)
+- "Collect Payment" button creates a Payment record
+
+---
+
+## Dialog Lifecycle Fixes
+
+All modal dialogs (`AddProductDialog`, `EditProductDialog`, `RestockDialog`) follow:
+
+1. **Proper `StatefulWidget` lifecycle** — controllers created in `initState`, disposed in `dispose()` with listeners removed first
+2. **`FocusScope.of(context).unfocus()`** — called before any async Firestore operation to detach active focus dependencies
+3. **`if (!mounted) return`** — guarded after every `await` call
+4. **`try`/`on Exception`** — errors caught to prevent unhandled rejections
+
+---
+
+## Theme (`lib/theme/app_theme.dart`)
+
+- Material 3 color scheme with custom amber/teal brand colors
+- Dark mode: background `#12171A`, surface `#1A2124`  
+- Light mode: clean white/light-gray surfaces
+- Custom `AppColors` extension with semantic tints (sale, profit, expense, inventory)
+
+---
+
+## Fixes Applied
+
+| # | Fix | Files |
+|---|-----|-------|
+| 1 | `effectivePrice` getter (fallback `unitPrice` → `costPrice` → 0) | `lib/models/product.dart` |
+| 2 | `unitLabel` getter (dynamic `sq.ft` / `pcs`) | `lib/models/product.dart` |
+| 3 | `CartItem.lineTotal` delegates to `effectivePrice` | `lib/providers/sales_provider.dart` |
+| 4 | Product selector card uses `effectivePrice` | `lib/screens/sales_entry_screen.dart` |
+| 5 | Cart subtitle uses `effectivePrice` + `unitLabel` | `lib/screens/sales_entry_screen.dart` |
+| 6 | `SaleLineItem.salePrice` uses `effectivePrice` | `lib/screens/sales_entry_screen.dart` |
+| 7 | Extracted `_AddProductDialog` (proper `StatefulWidget`) | `lib/screens/inventory_screen.dart` |
+| 8 | Extracted `_EditProductDialog` (proper `StatefulWidget`) | `lib/screens/inventory_screen.dart` |
+| 9 | `RestockDialog`: listener cleanup, `unfocus()`, mounted guards | `lib/screens/inventory_screen.dart` |
+| 10 | `CartItem.salePrice` editable field (user-overridable) | `lib/providers/sales_provider.dart` |
+| 11 | `updateItemPrice()` in `SalesNotifier` | `lib/providers/sales_provider.dart` |
+| 12 | Editable selling price field in `CartWidget` | `lib/screens/sales_entry_screen.dart` |
+| 13 | Payment record auto-created on sale save | `lib/screens/sales_entry_screen.dart` |
+
+---
+
+## Build & Run
 
 ```bash
-git clone https://github.com/mtahanaeem/foam-shop-erp.git
-cd foam-shop-erp
-```
-
-### 2. Firebase Setup
-
-| Step | Action |
-|:----:|:-------|
-| 1 | Create project at [Firebase Console](https://console.firebase.google.com) |
-| 2 | Enable **Firestore Database** + **Authentication** (Google Sign-In) |
-| 3 | Download `google-services.json` → `android/app/` |
-| 4 | Download `GoogleService-Info.plist` → `ios/Runner/` |
-| 5 | Run `dart run flutterfire configure --project=YOUR_PROJECT_ID` |
-
-### 3. Install & Run
-
-```bash
-# Install dependencies
+# Dependencies
 flutter pub get
 
-# Run in debug mode
+# Development
 flutter run
 
-# Build release APK
+# Release APK
 flutter build apk --release
 
-# Build split APK (smaller size)
-flutter build apk --release --split-per-abi
+# Output
+build/app/outputs/flutter-apk/app-release.apk
+
+# Static analysis
+flutter analyze
 ```
-
-### Output APKs
-
-| APK | Size | Architecture |
-|:----|:----:|:-------------|
-| `app-arm64-v8a-release.apk` | ~22 MB | Modern phones (2015+) |
-| `app-armeabi-v7a-release.apk` | ~20 MB | Older phones |
-| `app-x86_64-release.apk` | ~23 MB | Emulators / Chromebooks |
 
 ---
 
-## 🤖 CI/CD
+## Verification Checklist
 
-Two automated workflows — zero manual builds needed:
-
-| Workflow | Trigger | Output |
-|:---------|:-------:|:-------|
-| `build.yml` | Every push to `main` | APK artifacts in Actions tab |
-| `release.yml` | Push tag `v*` | GitHub Release with APK downloads |
-
-### Setup (one time)
-
-```bash
-# Base64 your Firebase config
-base64 -w 0 android/app/google-services.json | clip
-
-# Add as repo secret named: GOOGLE_SERVICES_JSON
-```
-
-### Daily Workflow
-
-```bash
-git add .
-git commit -m "your changes"
-git push origin main
-```
-
-Wait ~3 minutes, then go to **Actions** tab → latest run → **Artifacts** → download APK.
-
-### Release Workflow
-
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-Creates a GitHub Release page with all 3 split APKs attached.
-
----
-
-## 🧠 How It Works
-
-```
-Sale Created → costPriceAtSale Snapshot → Stock Deducted (Atomic)
-                    ↓
-         AccountingService.compute()
-                    ↓
-     Revenue ↑ | COGS ← costPriceAtSale | costPrice | salePrice×0.70
-     ─────────────────────────────────────────────────────────────────
-     Gross Profit = Revenue − COGS
-     Net Profit   = Gross Profit − Expenses
-     Cash in Hand = Capital + CashSales + Recoveries − Purchases − Expenses − SupplierPmts
-     Baqaya       = max(0, ΣSale.Balance − ΣRecoveryPayments)
-```
-
-| Step | Component | What It Does |
-|:----:|:----------|:-------------|
-| 1 | **Sales Entry** | User enters items, quantities, prices, discounts. `costPriceAtSale` frozen per line item |
-| 2 | **Validation** | `AccountingService.validateSale()` checks stock, amounts, empty items |
-| 3 | **Atomic Transaction** | `FirestoreService.saveSaleTransaction()` writes sale + deducts stock in one `runTransaction` |
-| 4 | **COGS Calculation** | `qtyOrArea × costPriceAtSale` — falls back to `costPrice` → `salePrice × 0.70` |
-| 5 | **Dashboard Recompute** | `ref.invalidate(accountingSummaryProvider)` triggers live UI update |
-| 6 | **Export** | CSV/PDF generated with same accounting formulas → saved to public Downloads |
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|:------|:-----------|
-| **Framework** | Flutter 3.44+ / Dart 3.12+ |
-| **State Management** | Riverpod |
-| **Backend** | Firebase Firestore |
-| **Authentication** | Firebase Auth + Google Sign-In |
-| **PDF Generation** | `pdf` + `printing` |
-| **CSV Export** | `csv` |
-| **Typography** | Plus Jakarta Sans (headings), Inter (body) |
-| **CI/CD** | GitHub Actions |
-
----
-
-## 📈 Key Takeaways
-
-1. **🔐 Atomic transactions prevent ledger drift** — Wrapping sale + stock deduction in a single `runTransaction` eliminates partial-write bugs that plague accounting apps.
-
-2. **📸 COGS snapshotting is essential** — Without `costPriceAtSale`, recalculating historical reports uses today's cost prices, producing inaccurate margins. Freezing cost at sale time guarantees historical accuracy.
-
-3. **🛡️ Non-negative guards prevent impossible states** — Customer baqaya can't go below zero. Supplier payable can't go below zero. These floor guards catch data entry errors immediately.
-
-4. **🧮 70% fallback saves legacy data** — Products created before the `costPrice` field existed default to `unitPrice × 0.70` instead of Rs 0, keeping historical COGS meaningful.
-
-5. **⚡ Real-time dashboard sync** — `ref.invalidate(accountingSummaryProvider)` after every mutation keeps the UI in lockstep with the database without polling.
-
----
-
-## 🤝 Connect
-
-<div align="center">
-
-[![GitHub](https://img.shields.io/badge/GitHub-mtahanaeem-181717?logo=github)](https://github.com/mtahanaeem)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?logo=linkedin)](https://linkedin.com/in/mtahanaeem)
-
-**If you find this project useful, consider giving it a ⭐!**
-
-</div>
+- [ ] `flutter analyze` — 0 issues
+- [ ] Open New Sale → Select product → editable selling price shows `effectivePrice`
+- [ ] Change selling price in cart → line total recalculates
+- [ ] Adjust quantity → total updates
+- [ ] Enter partial payment → balance auto-calculates
+- [ ] Save Sale → Payment record created in Firestore
+- [ ] Customer Khata → balance matches sum(sales) − sum(payments)
+- [ ] Add product dialog → opens/closes without context assertion
+- [ ] Edit product → saves correctly
+- [ ] Restock → live total calculation, atomic stock update
+- [ ] Dark/Light theme toggle → readable text contrast
