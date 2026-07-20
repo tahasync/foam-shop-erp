@@ -10,3 +10,12 @@ final customersStreamProvider = StreamProvider<List<Customer>>((ref) {
     }).toList();
   });
 });
+
+final customersWithBaqayaProvider = StreamProvider<List<Customer>>((ref) {
+  final service = ref.watch(firestoreServiceProvider);
+  return service.customersWithBaqayaStream.map((snap) {
+    return snap.docs.map((doc) {
+      return Customer.fromMap(doc.data() as Map<String, dynamic>);
+    }).toList();
+  });
+});
