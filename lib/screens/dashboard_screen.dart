@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/torn_receipt_card.dart';
@@ -11,36 +12,38 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final as = ref.watch(accountingSummaryProvider);
+    final bottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Asif Foam Center')),
       body: as.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (d) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          children: [
-            _Header(),
-            const SizedBox(height: 8),
-            TornReceiptCard(
-              label: 'Cash in Hand',
-              amount: 'Rs ${d.cashInHand.toStringAsFixed(0)}',
-              gradientStart: AppTheme.teal,
-              gradientEnd: AppTheme.tealDark,
-              stats: [
-                SlipStat(label: 'Revenue', value: 'Rs ${d.revenue.toStringAsFixed(0)}'),
-                SlipStat(label: 'Net Profit', value: 'Rs ${d.netProfit.toStringAsFixed(0)}'),
-                SlipStat(label: 'Baqaya', value: 'Rs ${d.totalCustomerBaqaya.toStringAsFixed(0)}'),
-              ],
-              stubLeft: 'Register slip · today',
-              stubRight: '#0001',
-            ),
-            const StitchedDivider(),
-            _StatGrid(d: d),
-            const StitchedDivider(),
-            if (d.lowStockCount > 0)
-              _LowStockAlert(d: d),
-          ],
+        data: (d) => SafeArea(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 24 + bottom),
+            children: [
+              _Header(),
+              const SizedBox(height: 14),
+              TornReceiptCard(
+                label: 'Cash in Hand',
+                amount: 'Rs ${NumberFormat('#,##0').format(d.cashInHand.toInt())}',
+                gradientStart: AppTheme.teal,
+                gradientEnd: AppTheme.tealDark,
+                stats: [
+                  SlipStat(label: 'Revenue', value: 'Rs ${NumberFormat('#,##0').format(d.revenue.toInt())}'),
+                  SlipStat(label: 'Net Profit', value: 'Rs ${NumberFormat('#,##0').format(d.netProfit.toInt())}'),
+                  SlipStat(label: 'Baqaya', value: 'Rs ${NumberFormat('#,##0').format(d.totalCustomerBaqaya.toInt())}'),
+                ],
+                stubLeft: 'Register slip · today',
+                stubRight: '#0001',
+              ),
+              const StitchedDivider(),
+              _StatGrid(d: d),
+              const StitchedDivider(),
+              if (d.lowStockCount > 0)
+                _LowStockAlert(d: d),
+            ],
+          ),
         ),
       ),
     );
@@ -56,12 +59,11 @@ class _Header extends ConsumerWidget {
     final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final dateStr = '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]} ${now.year}';
-    return Row(children: [
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Asif Foam Center', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.01)),
-        Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-        const SizedBox(height: 6),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Expanded(child: Text('Asif Foam Center', style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.01))),
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(color: ac.saleTint, borderRadius: BorderRadius.circular(999)),
@@ -73,12 +75,14 @@ class _Header extends ConsumerWidget {
             Text('Synced just now', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ac.saleFg)),
           ]),
         ),
-      ])),
-      const SizedBox(width: 8),
-      Container(width: 34, height: 34,
-        decoration: BoxDecoration(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: cs.outlineVariant)),
-        child: Icon(Icons.person_rounded, size: 18, color: cs.onSurfaceVariant)),
+        const SizedBox(width: 8),
+        Container(width: 34, height: 34,
+          decoration: BoxDecoration(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: cs.outlineVariant)),
+          child: Icon(Icons.person_rounded, size: 18, color: cs.onSurfaceVariant)),
+      ]),
+      const SizedBox(height: 4),
+      Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
     ]);
   }
 }

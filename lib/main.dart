@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_performance/firebase_performance.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
@@ -44,6 +46,9 @@ void main() {
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true,
       );
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+      await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
       final authService = AuthService();
       await authService.initialize();
     } catch (e) {
