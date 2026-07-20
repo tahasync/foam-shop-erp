@@ -24,6 +24,10 @@ jobs:
           channel: 'stable'
           architecture: x64
 
+      - name: Decode Firebase Android Config
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+
       - name: Install Project Dependencies
         run: flutter pub get
 
