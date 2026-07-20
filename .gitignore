@@ -67,7 +67,6 @@ Desktop.ini
 service_account.json
 google-services.json
 GoogleService-Info.plist
-firebase_options.dart
 
 # Temp
 migrate_working_dir/
