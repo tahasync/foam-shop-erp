@@ -1,174 +1,173 @@
-# Asif Foam Center ERP
+<div align="center">
 
-A high-performance, enterprise-grade retail inventory and accounting ledger application built with Flutter and Firebase, custom-designed for foam retail business management.
+# 🏪 Foam Shop ERP
 
-> **Status:** Production Ready  
-> **Platform:** Android 5.0+ (API 21)  
-> **Architecture:** Flutter + Firebase Firestore + Riverpod State Management  
-> **License:** MIT
+**Enterprise-Grade Retail Inventory & Accounting System**
 
----
+[![Flutter](https://img.shields.io/badge/Flutter-3.44+-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.12-0175C2?logo=dart&logoColor=white)](https://dart.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Riverpod](https://img.shields.io/badge/State-Riverpod-4DB33D?logo=flutter&logoColor=white)](https://riverpod.dev)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Android](https://img.shields.io/badge/Platform-Android%205.0+-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 
-## Architecture
-
-The application implements a **real-time double-entry accounting engine** with automated **Weighted Average Cost (WAC)** asset valuation. Every financial transaction flows through mathematically verified formulas with **costPriceAtSale snapshotting** — COGS is frozen at the time of each sale, preventing historical drift:
-
-| Metric | Formula |
-|---|---|
-| COGS | `Σ(Items Sold × costPriceAtSale)` with fallback: `currentCostPrice → salePrice × 0.70` |
-| Gross Profit | `Revenue − COGS` |
-| Net Profit | `Gross Profit − Total Expenses` |
-| Cash in Hand | `Opening Capital + Cash Sales + Recoveries − Purchases − Expenses − Supplier Payments` |
-| Customer Baqaya | `Σ(Sale Balances) − Σ(Recovery Payments)` floored at `≥ 0` |
-| Supplier Payable | `Σ(Purchase Invoices) − Σ(Supplier Payments)` floored at `≥ 0` |
-| Inventory Value | `Σ(Current Stock × Cost Price)` with `unitPrice × 0.70` fallback |
-
-All multi-document mutations are wrapped in **atomic Firestore transactions** (`runTransaction`) to guarantee mathematical consistency. Idempotency tokens (`transactionUuid`) prevent duplicate invoice processing across network interruptions.
+</div>
 
 ---
 
-## Features
+## 📋 Overview
 
-### Dashboard
-- Real-time Revenue, COGS, Gross Profit, Net Profit
-- Inventory valuation with cost price fallback estimation
-- Cash flow tracking with opening capital
-- Non-negative Baqaya and Supplier Payable with floor guards
-- Low stock alerts
+Foam Shop ERP is a **production-ready mobile retail management system** built for foam and mattress businesses. It features a **real-time double-entry accounting engine** with **Weighted Average Cost (WAC)** valuation, automated **COGS snapshotting**, and **atomic Firestore transactions** — all wrapped in a polished Material 3 UI with full dark mode support.
 
-### Sales
-- Cash and credit sales with partial payments
-- Line-item discounts, delivery/cutting charges
-- Quote-to-sale conversion
-- **costPriceAtSale snapshot** — COGS frozen at time of sale
-- Automatic stock deduction and COGS calculation
-- Negative stock prevention
-
-### Inventory
-- Weighted Average Cost (WAC) on every restock
-- Buy price (`costPrice`) and sell price (`unitPrice`) tracking
-- Zero-value cost protection — fallback to `unitPrice × 0.70` if missing
-- Low stock threshold alerts
-- Product categorization (Foam, Mattress, Sponge, Pillow, Custom Cut)
-
-### Customer Khata
-- Complete ledger with sale and payment history
-- Outstanding balance tracking with recovery deduction
-- One-tap collect payment with validation
-- Dashboard sync via `ref.invalidate(accountingSummaryProvider)`
-
-### Supplier Khata
-- Purchase history with balance tracking
-- Supplier payment management
-- Non-negative payable floor — payments cannot flip balance negative
-
-### Customer Recovery
-- Search customers by name
-- View outstanding balances with sale and payment history
-- Collect payments with form validation
-- Atomic Firestore transaction for recovery (`savePaymentTransaction`)
-- Recent activity timeline per customer
-
-### Reports & Export
-- Daily, Weekly, Monthly, Yearly sales reports with end-of-day boundary filtering
-- **CSV export** — saved directly to device **Downloads** folder
-- **PDF export** — bank-statement style with summary grid, alternating rows, page numbers
-- Date range filtering for custom periods
-- Public storage routing — files accessible via device file manager
-
-### Theme
-- Full Material 3 light and dark mode
-- WCAG-compliant contrast ratios (`--ink: #F5F7F6` in dark mode)
-- Category-tinted stat cards (Sales, Purchases, Expenses, Profit, Inventory)
-- Persistent theme selection across sessions
+| Module | Scope | Integration |
+|:------:|:-----|:-----------:|
+| **📊 Dashboard** | Live Revenue, COGS, Profit, Cash, Inventory Value | Riverpod + AccountingService |
+| **🛒 Sales** | Cash/credit, discounts, quotes, stock deduction | Atomic Firestore transactions |
+| **📦 Inventory** | WAC restock, buy/sell price, low stock alerts | Weighted average cost engine |
+| **👤 Customer Khata** | Ledger, baqaya, recovery, payment history | Real-time streams |
+| **🏭 Supplier Khata** | Purchases, payments, payable tracking | Real-time streams |
+| **📈 Reports** | Daily/Weekly/Monthly/Yearly + CSV/PDF export | ExportService |
 
 ---
 
-## Tech Stack
+## ✨ Features
 
-| Layer | Technology |
-|---|---|
-| Framework | Flutter 3.44+ (Dart 3.12+) |
-| State Management | Riverpod |
-| Backend | Firebase Firestore |
-| Authentication | Firebase Auth + Google Sign-In |
-| PDF Generation | pdf + printing |
-| CSV Export | csv |
-| Fonts | Plus Jakarta Sans (headings), Inter (body) |
-| CI/CD | GitHub Actions |
+- **🔢 Double-Entry Accounting** — Revenue, COGS, Gross Profit, Net Profit with `costPriceAtSale` snapshotting
+- **⚖️ Weighted Average Cost (WAC)** — Auto-calculated on every restock, zero-value fallback protection
+- **📸 COGS Snapshotting** — `costPriceAtSale` frozen at checkout — historical reports never drift
+- **🧮 Non-Negative Ledgers** — Baqaya and Supplier Payable floored at `≥ 0` with `sanitizeDouble()` guards
+- **🔐 Atomic Transactions** — Every sale, restock, void, and recovery wrapped in `runTransaction`
+- **🆔 Idempotency** — `transactionUuid` prevents duplicate invoice processing
+- **📱 Public Downloads Export** — CSV/PDF saved directly to device Downloads folder
+- **🌙 Material 3 Dark Mode** — WCAG-compliant contrast, persistent theme selection
+- **🤖 CI/CD** — Auto-build APK on every push via GitHub Actions
 
 ---
 
-## Getting Started
+## 🗂️ Project Structure
+
+```
+foam-shop-erp/
+├── lib/
+│   ├── main.dart                          # App entry + Firebase init
+│   ├── firebase_options.dart              # Firebase config (auto-generated)
+│   ├── models/                            # Data models
+│   │   ├── sale.dart                      # SaleLineItem with costPriceAtSale
+│   │   ├── product.dart                   # costPrice + unitPrice + WAC
+│   │   ├── customer.dart
+│   │   ├── supplier.dart
+│   │   ├── purchase.dart
+│   │   ├── expense.dart
+│   │   ├── payment.dart
+│   │   ├── supplier_payment.dart
+│   │   └── opening_balance.dart
+│   ├── services/                          # Business logic
+│   │   ├── accounting_service.dart        # Double-entry engine + sanitizeDouble
+│   │   ├── firestore_service.dart         # Atomic CRUD with runTransaction
+│   │   ├── auth_service.dart              # Firebase Auth
+│   │   └── export_service.dart            # CSV/PDF → public Downloads
+│   ├── providers/                         # Riverpod state providers
+│   ├── screens/
+│   │   ├── dashboard_screen.dart          # Live accounting summary cards
+│   │   ├── sales_entry_screen.dart        # Sale form with costPriceAtSale
+│   │   ├── inventory_screen.dart          # Product CRUD + WAC restock
+│   │   ├── customer_khata_screen.dart
+│   │   ├── supplier_khata_screen.dart
+│   │   ├── customer_recovery_screen.dart
+│   │   ├── expense_sheet_screen.dart
+│   │   ├── billing_screen.dart            # PDF receipt + printing
+│   │   ├── reports_screen.dart            # Period filter reports
+│   │   ├── export_screen.dart             # Export UI with date range
+│   │   ├── account_settings_screen.dart
+│   │   └── sign_in_screen.dart
+│   ├── theme/                             # Material 3 + AppColors extension
+│   └── widgets/
+│       └── sync_status_indicator.dart
+├── .github/workflows/
+│   ├── build.yml                          # Auto-build on push to main
+│   └── release.yml                        # Tag-triggered GitHub Release
+├── android/                               # Android native shell
+├── ios/                                   # iOS native shell
+├── firestore.rules                        # Security rules (anti-negative stock)
+├── pubspec.yaml
+└── README.md
+```
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Flutter SDK 3.4.0+ ([install guide](https://docs.flutter.dev/get-started/install))
-- Android Studio or VS Code with Flutter plugin
-- A Firebase project with Firestore, Auth, and Google Sign-In enabled
+| Requirement | Version | Download |
+|:------------|:-------:|:---------|
+| Flutter SDK | 3.4.0+ | [docs.flutter.dev](https://docs.flutter.dev/get-started/install) |
+| Dart | 3.12+ | Bundled with Flutter |
+| Firebase Project | — | [console.firebase.google.com](https://console.firebase.google.com) |
+| Android Studio | 2024+ | [developer.android.com](https://developer.android.com/studio) |
 
-### Local Setup
+### 1. Clone
 
 ```bash
-# Clone the repository
 git clone https://github.com/mtahanaeem/foam-shop-erp.git
 cd foam-shop-erp
+```
 
+### 2. Firebase Setup
+
+| Step | Action |
+|:----:|:-------|
+| 1 | Create project at [Firebase Console](https://console.firebase.google.com) |
+| 2 | Enable **Firestore Database** + **Authentication** (Google Sign-In) |
+| 3 | Download `google-services.json` → `android/app/` |
+| 4 | Download `GoogleService-Info.plist` → `ios/Runner/` |
+| 5 | Run `dart run flutterfire configure --project=YOUR_PROJECT_ID` |
+
+### 3. Install & Run
+
+```bash
 # Install dependencies
 flutter pub get
-
-# Configure Firebase
-# 1. Create a Firebase project at https://console.firebase.google.com
-# 2. Enable Firestore Database, Authentication (Google Sign-In)
-# 3. Download google-services.json → android/app/
-# 4. Download GoogleService-Info.plist → ios/Runner/
-# 5. Generate Firebase options:
-#    dart run flutterfire configure --project=YOUR_PROJECT_ID
 
 # Run in debug mode
 flutter run
 
 # Build release APK
 flutter build apk --release
-```
 
-### Build Split APK (smaller size)
-
-```bash
+# Build split APK (smaller size)
 flutter build apk --release --split-per-abi
 ```
 
-Output APKs are in `build/app/outputs/flutter-apk/`:
+### Output APKs
 
 | APK | Size | Architecture |
-|---|---|---|
+|:----|:----:|:-------------|
 | `app-arm64-v8a-release.apk` | ~22 MB | Modern phones (2015+) |
 | `app-armeabi-v7a-release.apk` | ~20 MB | Older phones |
 | `app-x86_64-release.apk` | ~23 MB | Emulators / Chromebooks |
 
-### GitHub Actions CI Setup
+---
 
-The repository includes two automated workflows:
+## 🤖 CI/CD
+
+Two automated workflows — zero manual builds needed:
 
 | Workflow | Trigger | Output |
-|---|---|---|
+|:---------|:-------:|:-------|
 | `build.yml` | Every push to `main` | APK artifacts in Actions tab |
-| `release.yml` | Push a tag `v*` | GitHub Release with APK downloads |
+| `release.yml` | Push tag `v*` | GitHub Release with APK downloads |
 
-#### Prerequisite — Add Firebase Secret
+### Setup (one time)
 
-Both workflows need your `google-services.json` as a GitHub secret:
+```bash
+# Base64 your Firebase config
+base64 -w 0 android/app/google-services.json | clip
 
-1. Base64 encode your Firebase Android config:
-   ```bash
-   base64 -w 0 android/app/google-services.json | clip
-   ```
-2. Go to repo → Settings → Secrets and variables → Actions → New repository secret
-3. Name: `GOOGLE_SERVICES_JSON` — value: paste the base64 string
+# Add as repo secret named: GOOGLE_SERVICES_JSON
+```
 
-#### Workflow 1: Auto-Build on Push
-
-Every time you push to `main`, the APK is automatically built and uploaded as an artifact:
+### Daily Workflow
 
 ```bash
 git add .
@@ -176,96 +175,81 @@ git commit -m "your changes"
 git push origin main
 ```
 
-Wait ~3 minutes, then go to the **Actions** tab → click the latest run → scroll to **Artifacts** → download `app-arm64-v8a-release` for your phone.
+Wait ~3 minutes, then go to **Actions** tab → latest run → **Artifacts** → download APK.
 
-#### Workflow 2: Tagged Release
-
-When you're ready for a formal release, push a version tag:
+### Release Workflow
 
 ```bash
 git tag v1.1.0
 git push origin v1.1.0
 ```
 
-This creates a GitHub Release page with all 3 split APKs attached as downloadable assets.
+Creates a GitHub Release page with all 3 split APKs attached.
 
 ---
 
-## Project Structure
+## 🧠 How It Works
 
 ```
-lib/
-├── main.dart              # App entry point with Firebase init
-├── firebase_options.dart  # Auto-generated Firebase config
-├── models/                # Data models (Sale, Product, Customer, etc.)
-│   ├── sale.dart          # SaleLineItem with costPriceAtSale snapshot
-│   ├── product.dart       # Product with costPrice (buy price) + unitPrice (sell price)
-│   ├── customer.dart
-│   ├── supplier.dart
-│   ├── purchase.dart
-│   ├── expense.dart
-│   ├── payment.dart
-│   ├── supplier_payment.dart
-│   └── opening_balance.dart
-├── services/              # Business logic
-│   ├── accounting_service.dart   # Double-entry engine with sanitizeDouble guards
-│   ├── firestore_service.dart    # Atomic Firestore transactions
-│   ├── auth_service.dart         # Firebase authentication
-│   └── export_service.dart       # CSV/PDF export → public Downloads directory
-├── providers/             # Riverpod state providers
-├── screens/
-│   ├── dashboard_screen.dart     # Real-time accounting summary cards
-│   ├── sales_entry_screen.dart   # Sale creation with costPriceAtSale
-│   ├── inventory_screen.dart     # Product CRUD + restock with WAC
-│   ├── customer_khata_screen.dart
-│   ├── supplier_khata_screen.dart
-│   ├── customer_recovery_screen.dart
-│   ├── expense_sheet_screen.dart
-│   ├── billing_screen.dart       # PDF receipt generation + printing
-│   ├── reports_screen.dart       # Daily/Weekly/Monthly/Yearly reports
-│   ├── export_screen.dart        # Export UI with period selector
-│   ├── account_settings_screen.dart
-│   └── sign_in_screen.dart
-├── theme/                # Material 3 theme + AppColors ThemeExtension
-└── widgets/
-    └── sync_status_indicator.dart
+Sale Created → costPriceAtSale Snapshot → Stock Deducted (Atomic)
+                    ↓
+         AccountingService.compute()
+                    ↓
+     Revenue ↑ | COGS ← costPriceAtSale | costPrice | salePrice×0.70
+     ─────────────────────────────────────────────────────────────────
+     Gross Profit = Revenue − COGS
+     Net Profit   = Gross Profit − Expenses
+     Cash in Hand = Capital + CashSales + Recoveries − Purchases − Expenses − SupplierPmts
+     Baqaya       = max(0, ΣSale.Balance − ΣRecoveryPayments)
 ```
 
----
-
-## Data Integrity
-
-| Protection | Implementation |
-|---|---|
-| **Atomic transactions** | `runTransaction` for sales, restocks, voids, recoveries |
-| **Idempotency** | `transactionUuid` on every sale — duplicate detection before write |
-| **COGS snapshotting** | `costPriceAtSale` frozen on `SaleLineItem` at checkout |
-| **Cost fallback** | `costPrice → unitPrice × 0.70` when cost is missing (legacy data) |
-| **Non-negative baqaya** | `max(0, outstandingSales − recoveries)` floor guard |
-| **Non-negative supplier** | `max(0, purchases − payments)` floor guard |
-| **Data sanitization** | `sanitizeDouble()` on every numeric field — null/NaN/Infinity → 0 |
-| **Stock validation** | `validateSale()` checks stock before any transaction |
-| **Negative stock prevention** | Firestore rules enforce `current_stock >= 0` |
-| **Dashboard sync** | `ref.invalidate(accountingSummaryProvider)` after every mutation |
+| Step | Component | What It Does |
+|:----:|:----------|:-------------|
+| 1 | **Sales Entry** | User enters items, quantities, prices, discounts. `costPriceAtSale` frozen per line item |
+| 2 | **Validation** | `AccountingService.validateSale()` checks stock, amounts, empty items |
+| 3 | **Atomic Transaction** | `FirestoreService.saveSaleTransaction()` writes sale + deducts stock in one `runTransaction` |
+| 4 | **COGS Calculation** | `qtyOrArea × costPriceAtSale` — falls back to `costPrice` → `salePrice × 0.70` |
+| 5 | **Dashboard Recompute** | `ref.invalidate(accountingSummaryProvider)` triggers live UI update |
+| 6 | **Export** | CSV/PDF generated with same accounting formulas → saved to public Downloads |
 
 ---
 
-## Contributing
+## 🛠️ Tech Stack
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+| Layer | Technology |
+|:------|:-----------|
+| **Framework** | Flutter 3.44+ / Dart 3.12+ |
+| **State Management** | Riverpod |
+| **Backend** | Firebase Firestore |
+| **Authentication** | Firebase Auth + Google Sign-In |
+| **PDF Generation** | `pdf` + `printing` |
+| **CSV Export** | `csv` |
+| **Typography** | Plus Jakarta Sans (headings), Inter (body) |
+| **CI/CD** | GitHub Actions |
 
 ---
 
-## License
+## 📈 Key Takeaways
 
-Distributed under the MIT License. See `LICENSE` for more information.
+1. **🔐 Atomic transactions prevent ledger drift** — Wrapping sale + stock deduction in a single `runTransaction` eliminates partial-write bugs that plague accounting apps.
+
+2. **📸 COGS snapshotting is essential** — Without `costPriceAtSale`, recalculating historical reports uses today's cost prices, producing inaccurate margins. Freezing cost at sale time guarantees historical accuracy.
+
+3. **🛡️ Non-negative guards prevent impossible states** — Customer baqaya can't go below zero. Supplier payable can't go below zero. These floor guards catch data entry errors immediately.
+
+4. **🧮 70% fallback saves legacy data** — Products created before the `costPrice` field existed default to `unitPrice × 0.70` instead of Rs 0, keeping historical COGS meaningful.
+
+5. **⚡ Real-time dashboard sync** — `ref.invalidate(accountingSummaryProvider)` after every mutation keeps the UI in lockstep with the database without polling.
 
 ---
 
-## Contact
+## 🤝 Connect
 
-Project Link: [https://github.com/mtahanaeem/foam-shop-erp](https://github.com/mtahanaeem/foam-shop-erp)
+<div align="center">
+
+[![GitHub](https://img.shields.io/badge/GitHub-mtahanaeem-181717?logo=github)](https://github.com/mtahanaeem)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?logo=linkedin)](https://linkedin.com/in/mtahanaeem)
+
+**If you find this project useful, consider giving it a ⭐!**
+
+</div>
