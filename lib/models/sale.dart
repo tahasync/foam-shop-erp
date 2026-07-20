@@ -5,6 +5,7 @@ class SaleLineItem {
   final double qtyOrArea;
   final double salePrice;
   final double lineDiscountAmount;
+  final double costPriceAtSale;
 
   SaleLineItem({
     required this.productId,
@@ -13,6 +14,7 @@ class SaleLineItem {
     required this.qtyOrArea,
     required this.salePrice,
     this.lineDiscountAmount = 0,
+    this.costPriceAtSale = 0,
   });
 
   double get lineTotal => (qtyOrArea * salePrice) - lineDiscountAmount;
@@ -24,6 +26,7 @@ class SaleLineItem {
         'qty_or_area': qtyOrArea,
         'sale_price': salePrice,
         'line_discount_amount': lineDiscountAmount,
+        'cost_price_at_sale': costPriceAtSale,
       };
 
   factory SaleLineItem.fromMap(Map<String, dynamic> map) => SaleLineItem(
@@ -33,6 +36,7 @@ class SaleLineItem {
         qtyOrArea: (map['qty_or_area'] as num).toDouble(),
         salePrice: (map['sale_price'] as num).toDouble(),
         lineDiscountAmount: (map['line_discount_amount'] as num?)?.toDouble() ?? 0,
+        costPriceAtSale: (map['cost_price_at_sale'] as num?)?.toDouble() ?? 0,
       );
 }
 

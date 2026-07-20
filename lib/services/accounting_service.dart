@@ -81,10 +81,15 @@ class AccountingService {
       if (sale.isVoided || sale.isQuote) continue;
       revenue += sanitize(sale.amount);
       for (final li in sale.lineItems) {
-        final product = productMap[li.productId];
-        if (product != null) {
-          cogs += sanitize(li.qtyOrArea) * sanitize(product.costPrice);
+        double unitCost = li.costPriceAtSale;
+        if (unitCost <= 0) {
+          final product = productMap[li.productId];
+          unitCost = product?.costPrice ?? 0;
         }
+        if (unitCost <= 0) {
+          unitCost = sanitize(li.salePrice) * 0.70;
+        }
+        cogs += sanitize(li.qtyOrArea) * sanitize(unitCost);
       }
     }
 
@@ -116,15 +121,21 @@ class AccountingService {
     final totalRecoveredFromCustomers =
         payments.fold(0.0, (s, p) => s + sanitize(p.amountCollected));
     final totalCustomerBaqaya = sanitize(totalOutstandingFromSales) - sanitize(totalRecoveredFromCustomers);
+    final safeCustomerBaqaya = totalCustomerBaqaya < 0 ? 0.0 : totalCustomerBaqaya;
 
     final totalPurchasesAmount =
         purchases.fold(0.0, (s, p) => s + sanitize(p.costAmount));
     final totalPaidToSuppliers =
         supplierPayments.fold(0.0, (s, sp) => s + sanitize(sp.amountPaid));
     final totalSupplierBaqaya = sanitize(totalPurchasesAmount) - sanitize(totalPaidToSuppliers);
+    final safeSupplierBaqaya = totalSupplierBaqaya < 0 ? 0.0 : totalSupplierBaqaya;
 
-    final inventoryValue =
-        products.fold(0.0, (s, p) => s + (sanitize(p.currentStock) * sanitize(p.costPrice)));
+    double inventoryValue = 0;
+    for (final p in products) {
+      double unitCost = sanitize(p.costPrice);
+      if (unitCost <= 0) unitCost = sanitize(p.unitPrice) * 0.70;
+      inventoryValue += sanitize(p.currentStock) * unitCost;
+    }
 
     final lowStockCount = products.where((p) => p.isLowStock).length;
     final totalProducts = products.length;
@@ -147,8 +158,8 @@ class AccountingService {
       cashFromRecoveries: cashFromRecoveries,
       cashPaidForPurchases: cashPaidForPurchases,
       cashPaidToSuppliers: cashPaidToSuppliers,
-      totalCustomerBaqaya: totalCustomerBaqaya,
-      totalSupplierBaqaya: totalSupplierBaqaya,
+      totalCustomerBaqaya: safeCustomerBaqaya,
+      totalSupplierBaqaya: safeSupplierBaqaya,
       inventoryValue: inventoryValue,
       lowStockCount: lowStockCount,
       totalProducts: totalProducts,
