@@ -6,7 +6,6 @@ import '../models/sale.dart';
 import '../models/expense.dart';
 import '../models/product.dart';
 import '../services/accounting_service.dart';
-import '../services/export_service.dart';
 import '../providers/sale_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
@@ -145,7 +144,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
-    final range = _range;
 
     final salesAsync = ref.watch(salesStreamProvider);
     final productsAsync = ref.watch(productsStreamProvider);
@@ -391,7 +389,6 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    final cs = Theme.of(context).colorScheme;
     return FilledButton.tonal(
       onPressed: onTap,
       style: FilledButton.styleFrom(

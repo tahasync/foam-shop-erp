@@ -8,7 +8,6 @@ import '../providers/sale_provider.dart';
 import '../providers/payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
-import '../services/accounting_service.dart';
 import '../theme/app_theme.dart';
 
 class CustomerRecoveryScreen extends ConsumerStatefulWidget {
