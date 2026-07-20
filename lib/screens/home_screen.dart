@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/sync_status_indicator.dart';
+import '../widgets/custom_nav_bar.dart';
 import 'inventory_screen.dart';
 import 'sales_entry_screen.dart';
 import 'customer_khata_screen.dart';
@@ -73,15 +74,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       body: _screens[_tab],
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: CustomNavBar(
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.sell_rounded), label: 'Sales'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_rounded), label: 'Inventory'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_rounded), label: 'Khata'),
-        ],
       ),
     );
   }
