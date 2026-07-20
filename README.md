@@ -148,29 +148,46 @@ Output APKs are in `build/app/outputs/flutter-apk/`:
 
 ### GitHub Actions CI Setup
 
-The repository includes an automated release workflow (`.github/workflows/release.yml`) that builds and publishes APKs when a version tag is pushed.
+The repository includes two automated workflows:
 
-To enable CI builds:
+| Workflow | Trigger | Output |
+|---|---|---|
+| `build.yml` | Every push to `main` | APK artifacts in Actions tab |
+| `release.yml` | Push a tag `v*` | GitHub Release with APK downloads |
 
-1. **Enable GitHub Actions** in your repo settings → Actions → Allow all actions
-2. **Add a repository secret** named `GOOGLE_SERVICES_JSON`:
+#### Prerequisite — Add Firebase Secret
+
+Both workflows need your `google-services.json` as a GitHub secret:
+
+1. Base64 encode your Firebase Android config:
    ```bash
-   # Base64 encode your Firebase Android config
    base64 -w 0 android/app/google-services.json | clip
    ```
-   Then paste into: repo → Settings → Secrets and variables → Actions → New repository secret
+2. Go to repo → Settings → Secrets and variables → Actions → New repository secret
+3. Name: `GOOGLE_SERVICES_JSON` — value: paste the base64 string
 
-3. **Trigger a build** by pushing a version tag:
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
+#### Workflow 1: Auto-Build on Push
 
-The runner will:
-- Check out code and install Flutter
-- Decode `google-services.json` from the secret
-- Build `flutter build apk --release --split-per-abi`
-- Attach all 3 split APKs to the GitHub Release
+Every time you push to `main`, the APK is automatically built and uploaded as an artifact:
+
+```bash
+git add .
+git commit -m "your changes"
+git push origin main
+```
+
+Wait ~3 minutes, then go to the **Actions** tab → click the latest run → scroll to **Artifacts** → download `app-arm64-v8a-release` for your phone.
+
+#### Workflow 2: Tagged Release
+
+When you're ready for a formal release, push a version tag:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+This creates a GitHub Release page with all 3 split APKs attached as downloadable assets.
 
 ---
 
