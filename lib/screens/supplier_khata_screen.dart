@@ -104,7 +104,7 @@ class SupplierKhataScreen extends ConsumerWidget {
           if (ctx.mounted) Navigator.pop(ctx);
         }, child: const Text('Save')),
       ],
-    )).then((_) { nc.dispose(); pc.dispose(); });
+    )).whenComplete(() { nc.dispose(); pc.dispose(); });
   }
 }
 
@@ -245,7 +245,7 @@ class _SupDetail extends ConsumerWidget {
           if (ctx.mounted) Navigator.pop(ctx);
         }, child: const Text('Pay')),
       ],
-    )).then((_) => ctrl.dispose());
+    )).whenComplete(() => ctrl.dispose());
   }
 }
 

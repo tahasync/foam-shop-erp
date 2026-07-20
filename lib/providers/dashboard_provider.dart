@@ -20,15 +20,28 @@ final openingBalanceStreamProvider = StreamProvider<OpeningBalance?>((ref) {
 });
 
 final accountingSummaryProvider = Provider<AsyncValue<AccountingSummary>>((ref) {
-  final sales = ref.watch(salesStreamProvider).asData?.value ?? [];
-  final purchases = ref.watch(purchasesStreamProvider).asData?.value ?? [];
-  final expenses = ref.watch(expensesStreamProvider).asData?.value ?? [];
-  final payments = ref.watch(paymentsStreamProvider).asData?.value ?? [];
-  final supplierPayments = ref.watch(supplierPaymentsStreamProvider).asData?.value ?? [];
-  final products = ref.watch(productsStreamProvider).asData?.value ?? [];
-  final openingBal = ref.watch(openingBalanceStreamProvider).asData?.value;
+  final salesAsync = ref.watch(salesStreamProvider);
+  final purchasesAsync = ref.watch(purchasesStreamProvider);
+  final expensesAsync = ref.watch(expensesStreamProvider);
+  final paymentsAsync = ref.watch(paymentsStreamProvider);
+  final supplierPaymentsAsync = ref.watch(supplierPaymentsStreamProvider);
+  final productsAsync = ref.watch(productsStreamProvider);
+  final openingBalAsync = ref.watch(openingBalanceStreamProvider);
 
-  if (ref.watch(salesStreamProvider).isLoading) return const AsyncValue.loading();
+  if (salesAsync.isLoading || purchasesAsync.isLoading ||
+      expensesAsync.isLoading || paymentsAsync.isLoading ||
+      supplierPaymentsAsync.isLoading || productsAsync.isLoading ||
+      openingBalAsync.isLoading) {
+    return const AsyncValue.loading();
+  }
+
+  final sales = salesAsync.asData?.value ?? [];
+  final purchases = purchasesAsync.asData?.value ?? [];
+  final expenses = expensesAsync.asData?.value ?? [];
+  final payments = paymentsAsync.asData?.value ?? [];
+  final supplierPayments = supplierPaymentsAsync.asData?.value ?? [];
+  final products = productsAsync.asData?.value ?? [];
+  final openingBal = openingBalAsync.asData?.value;
 
   final service = ref.read(accountingServiceProvider);
   final result = service.compute(

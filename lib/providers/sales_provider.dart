@@ -14,17 +14,19 @@ class CartItem {
 
 class SalesState {
   final List<CartItem> cart;
+  final String customerId;
   final String customerName;
 
-  const SalesState({this.cart = const [], this.customerName = 'Walk-in Customer'});
+  const SalesState({this.cart = const [], this.customerId = '', this.customerName = 'Walk-in Customer'});
 
   int get totalItems => cart.fold(0, (s, i) => s + i.quantity);
 
   double get subtotal => cart.fold(0.0, (s, i) => s + i.lineTotal);
 
-  SalesState copyWith({List<CartItem>? cart, String? customerName}) {
+  SalesState copyWith({List<CartItem>? cart, String? customerId, String? customerName}) {
     return SalesState(
       cart: cart ?? this.cart,
+      customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
     );
   }
@@ -35,6 +37,7 @@ class SalesNotifier extends Notifier<SalesState> {
   SalesState build() => const SalesState();
 
   void addToCart(Product product) {
+    if (product.currentStock <= 0) return;
     final existing = state.cart.where((c) => c.product.id == product.id).firstOrNull;
     if (existing != null) {
       if (existing.quantity >= product.currentStock) return;
@@ -76,8 +79,8 @@ class SalesNotifier extends Notifier<SalesState> {
     state = state.copyWith(cart: updated);
   }
 
-  void setCustomer(String name) {
-    state = state.copyWith(customerName: name);
+  void setCustomer(String id, String name) {
+    state = state.copyWith(customerId: id, customerName: name);
   }
 
   void clearCart() {

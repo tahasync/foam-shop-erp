@@ -79,7 +79,7 @@ class BillingScreen extends ConsumerWidget {
         pw.Center(child: pw.Text('Digital Register')),
         pw.SizedBox(height: 8), pw.Divider(),
         pw.Text('Date: ${sale.date.day}/${sale.date.month}/${sale.date.year}'),
-        pw.Text('Customer: ${customer?.name ?? sale.customerId}'),
+        pw.Text('Customer: ${customer?.name ?? sale.customerName ?? sale.customerId}'),
         pw.Divider(),
         // Line items
         ...sale.lineItems.map((li) {

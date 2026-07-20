@@ -24,7 +24,7 @@ class CustomerKhataScreen extends ConsumerWidget {
       data: (csList) => salesAsync.when(
         data: (sales) => paymentsAsync.when(
           data: (payments) => csList.map((c) {
-            final cSales = sales.where((s) => s.customerId == c.id);
+            final cSales = sales.where((s) => s.customerId == c.id && !s.isVoided && !s.isQuote);
             final cPayments = payments.where((p) => p.customerId == c.id);
             final total = cSales.fold(0.0, (s, x) => s + x.amount);
             final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
@@ -125,7 +125,7 @@ class _CustDetail extends ConsumerWidget {
       body: salesAsync.when(
         data: (sales) => paymentsAsync.when(
           data: (payments) {
-            final cSales = sales.where((s) => s.customerId == customer.id);
+            final cSales = sales.where((s) => s.customerId == customer.id && !s.isVoided && !s.isQuote);
             final cPayments = payments.where((p) => p.customerId == customer.id);
             final total = cSales.fold(0.0, (s, x) => s + x.amount);
             final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
