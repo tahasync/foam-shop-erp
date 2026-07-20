@@ -115,20 +115,53 @@ class AccountingService {
         sanitize(totalExpenses) -
         sanitize(cashPaidToSuppliers);
 
-    final totalOutstandingFromSales = sales
-        .where((s) => !s.isVoided && !s.isQuote)
-        .fold(0.0, (s, x) => s + sanitize(x.balance));
-    final totalRecoveredFromCustomers =
-        payments.fold(0.0, (s, p) => s + sanitize(p.amountCollected));
-    final totalCustomerBaqaya = sanitize(totalOutstandingFromSales) - sanitize(totalRecoveredFromCustomers);
-    final safeCustomerBaqaya = totalCustomerBaqaya < 0 ? 0.0 : totalCustomerBaqaya;
+    double totalCustomerBaqaya = 0;
+    {
+      final customerIds = <String>{};
+      for (final s in sales) {
+        if (!s.isVoided && !s.isQuote && s.customerId.isNotEmpty) {
+          customerIds.add(s.customerId);
+        }
+      }
+      for (final p in payments) {
+        if (p.customerId.isNotEmpty) customerIds.add(p.customerId);
+      }
+      for (final cid in customerIds) {
+        final cSales = sales.where(
+            (s) => s.customerId == cid && !s.isVoided && !s.isQuote);
+        final cPayments = payments.where((p) => p.customerId == cid);
+        final total =
+            cSales.fold(0.0, (s, x) => s + sanitize(x.amount));
+        final paid =
+            cSales.fold(0.0, (s, x) => s + sanitize(x.paid));
+        final recv =
+            cPayments.fold(0.0, (s, x) => s + sanitize(x.amountCollected));
+        final bal = sanitize(total) - sanitize(paid) - sanitize(recv);
+        if (bal > 0) totalCustomerBaqaya += bal;
+      }
+    }
 
-    final totalPurchasesAmount =
-        purchases.fold(0.0, (s, p) => s + sanitize(p.costAmount));
-    final totalPaidToSuppliers =
-        supplierPayments.fold(0.0, (s, sp) => s + sanitize(sp.amountPaid));
-    final totalSupplierBaqaya = sanitize(totalPurchasesAmount) - sanitize(totalPaidToSuppliers);
-    final safeSupplierBaqaya = totalSupplierBaqaya < 0 ? 0.0 : totalSupplierBaqaya;
+    double totalSupplierBaqaya = 0;
+    {
+      final supplierIds = <String>{};
+      for (final p in purchases) {
+        if (p.supplierId.isNotEmpty) supplierIds.add(p.supplierId);
+      }
+      for (final sp in supplierPayments) {
+        if (sp.supplierId.isNotEmpty) supplierIds.add(sp.supplierId);
+      }
+      for (final sid in supplierIds) {
+        final sPurchases = purchases.where((p) => p.supplierId == sid);
+        final sPayments =
+            supplierPayments.where((sp) => sp.supplierId == sid);
+        final total =
+            sPurchases.fold(0.0, (s, p) => s + sanitize(p.costAmount));
+        final paid =
+            sPayments.fold(0.0, (s, sp) => s + sanitize(sp.amountPaid));
+        final bal = sanitize(total) - sanitize(paid);
+        if (bal > 0) totalSupplierBaqaya += bal;
+      }
+    }
 
     double inventoryValue = 0;
     for (final p in products) {
@@ -158,8 +191,8 @@ class AccountingService {
       cashFromRecoveries: cashFromRecoveries,
       cashPaidForPurchases: cashPaidForPurchases,
       cashPaidToSuppliers: cashPaidToSuppliers,
-      totalCustomerBaqaya: safeCustomerBaqaya,
-      totalSupplierBaqaya: safeSupplierBaqaya,
+      totalCustomerBaqaya: totalCustomerBaqaya,
+      totalSupplierBaqaya: totalSupplierBaqaya,
       inventoryValue: inventoryValue,
       lowStockCount: lowStockCount,
       totalProducts: totalProducts,
