@@ -24,15 +24,6 @@ class ExportService {
     return '${_dateFmt.format(start)} \u2014 ${_dateFmt.format(end)}';
   }
 
-  Future<Directory> _getPublicDir() async {
-    if (Platform.isAndroid) {
-      final downloadDir = Directory('/storage/emulated/0/Download');
-      if (await downloadDir.exists()) return downloadDir;
-    }
-    final dir = await getApplicationDocumentsDirectory();
-    return dir;
-  }
-
   Future<File> generateCsvReport({
     required List<Sale> sales,
     required List<Product> products,
@@ -85,7 +76,7 @@ class ExportService {
     rows.add(['TOTAL', '', '', _fmtRaw(summary.revenue), _fmtRaw(summary.cogs), _fmtRaw(summary.netProfit)]);
 
     final csv = const ListToCsvConverter().convert(rows);
-    final dir = await _getPublicDir();
+    final dir = await getApplicationDocumentsDirectory();
     final fileName = 'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.csv';
     final file = File('${dir.path}/$fileName');
     await file.writeAsString(csv);
@@ -224,7 +215,7 @@ class ExportService {
       ));
     }
 
-    final dir = await _getPublicDir();
+    final dir = await getApplicationDocumentsDirectory();
     final fileName = 'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.pdf';
     final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(await doc.save());
