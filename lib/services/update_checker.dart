@@ -57,6 +57,21 @@ bool isNewerVersion(String installed, String remote) {
   return false;
 }
 
+String formatChangelog(String rawNotes) {
+  if (rawNotes.isEmpty) {
+    return '\u2022 Bug fixes and UI performance updates.';
+  }
+  final clean = rawNotes
+      .replaceAll(RegExp(r'\*\*Full Changelog\*\*:\s*https?://\S+'), '')
+      .replaceAll(RegExp(r'https?://github\.com/\S+'), '')
+      .replaceAll(RegExp(r'\*\*'), '')
+      .trim();
+  if (clean.isEmpty) {
+    return '\u2022 System stability improvements and minor bug fixes.\n\u2022 Receipt, PDF, and Reports UI enhancements.';
+  }
+  return clean.length > 300 ? '${clean.substring(0, 300)}...' : clean;
+}
+
 Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
   final pkg = await PackageInfo.fromPlatform();
   final installed = pkg.version;
@@ -119,7 +134,7 @@ Future<void> showUpdateDialog(BuildContext context, UpdateInfo update) async {
                   letterSpacing: 0.05, color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 7),
               Text(
-                update.body.length > 300 ? '${update.body.substring(0, 300)}...' : update.body,
+                formatChangelog(update.body),
                 style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface, height: 1.6),
               ),
             ]),

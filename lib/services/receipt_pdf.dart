@@ -71,8 +71,8 @@ Future<Uint8List> generateReceiptPdfBytes({
               decoration: pw.BoxDecoration(color: tintSalesBg, borderRadius: pw.BorderRadius.circular(8)),
               child: pw.Column(children: [
                 pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                  pw.Text('Amount'),
-                  pw.Text('Rs ${fmt.format(totalAmount.toInt())}'),
+                  pw.Text('Total', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.Text('Rs ${fmt.format(totalAmount.toInt())}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                 ]),
                 pw.SizedBox(height: 4),
                 pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
@@ -81,8 +81,12 @@ Future<Uint8List> generateReceiptPdfBytes({
                 ]),
                 pw.Divider(color: tintSalesFg, thickness: 0.5),
                 pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-                  pw.Text('Balance', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: tintSalesFg)),
-                  pw.Text('Rs ${fmt.format(remainingBalance.toInt())}', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: tintSalesFg)),
+                  pw.Text(paidAmount >= totalAmount ? 'Change' : 'Balance Due',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold,
+                          color: paidAmount >= totalAmount ? tintProfitFg : tintExpenseFg)),
+                  pw.Text('Rs ${fmt.format((paidAmount - totalAmount).abs().toInt())}',
+                      style: pw.TextStyle(fontWeight: pw.FontWeight.bold,
+                          color: paidAmount >= totalAmount ? tintProfitFg : tintExpenseFg)),
                 ]),
               ]),
             ),
