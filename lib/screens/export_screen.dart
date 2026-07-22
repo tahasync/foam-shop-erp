@@ -13,7 +13,7 @@ import '../providers/payment_provider.dart';
 import '../providers/supplier_payment_provider.dart';
 import '../providers/export_provider.dart';
 import '../providers/dashboard_provider.dart';
-import 'package:file_saver/file_saver.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 
 enum ExportPeriod { daily, weekly, monthly, custom }
@@ -127,12 +127,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        final bytes = await xlsxFile.readAsBytes();
-        final fileName = xlsxFile.path.split('/').last;
-        await FileSaver.instance.saveFile(name: fileName.replaceAll('.xlsx', ''), bytes: bytes, ext: 'xlsx', mimeType: MimeType.microsoftExcel);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to Downloads: $fileName')));
-        }
+        await SharePlus.instance.share(ShareParams(files: [XFile(xlsxFile.path)], text: 'Sales Report - Asif Foam Center'));
       } else if (type == 'pdf') {
         final pdfFile = await service.generatePdfReport(
           sales: sales,
@@ -144,12 +139,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        final bytes = await pdfFile.readAsBytes();
-        final fileName = pdfFile.path.split('/').last;
-        await FileSaver.instance.saveFile(name: fileName.replaceAll('.pdf', ''), bytes: bytes, ext: 'pdf', mimeType: MimeType.pdf);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to Downloads: $fileName')));
-        }
+        await SharePlus.instance.share(ShareParams(files: [XFile(pdfFile.path)], text: 'Sales Report - Asif Foam Center'));
       } else {
         final csvFile = await service.generateCsvReport(
           sales: sales,
@@ -160,12 +150,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         );
         if (!mounted) return;
         setState(() => _loading = false);
-        final bytes = await csvFile.readAsBytes();
-        final fileName = csvFile.path.split('/').last;
-        await FileSaver.instance.saveFile(name: fileName.replaceAll('.csv', ''), bytes: bytes, ext: 'csv', mimeType: MimeType.csv);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to Downloads: $fileName')));
-        }
+        await SharePlus.instance.share(ShareParams(files: [XFile(csvFile.path)], text: 'Sales Report - Asif Foam Center'));
       }
     } catch (e) {
       if (!mounted) return;
