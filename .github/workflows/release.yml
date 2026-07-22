@@ -31,11 +31,16 @@ jobs:
         run: |
           echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
 
+      - name: Write Firebase Config
+        run: |
+          mkdir -p env
+          echo '${{ secrets.FIREBASE_CONFIG_JSON }}' > env/firebase_config.json
+
       - name: Install Project Dependencies
         run: flutter pub get
 
       - name: Compile Production Release APK Bundle
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --dart-define-from-file=env/firebase_config.json
 
       - name: Generate Global Production Release Artifacts
         uses: softprops/action-gh-release@v2
