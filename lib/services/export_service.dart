@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
@@ -96,9 +97,9 @@ class ExportService {
     final tealColor = PdfColor.fromInt(0xFF0F6B64);
     final tealDark = PdfColor.fromInt(0xFF0B4E49);
     const subStyle = pw.TextStyle(fontSize: 10, color: PdfColors.grey600);
-    const thStyle = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white);
+    final thStyle = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white);
     const tdStyle = pw.TextStyle(fontSize: 9);
-    const totalStyle = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
+    final totalStyle = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
 
     int pageNum = 0;
     final dataRows = sales.where((s) => !s.isVoided && !s.isQuote).toList();
@@ -230,5 +231,82 @@ class ExportService {
         pw.Text(value, style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: fg)),
       ]),
     );
+  }
+
+  Future<File> generateXlsxReport({
+    required List<Sale> sales,
+    required List<Product> products,
+    required AccountingSummary summary,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final xl = Excel.createExcel();
+
+    // Sheet 1: Summary
+    final summarySheet = xl['Summary'];
+    summarySheet.updateCell(CellIndex.indexByString('A1'), TextCellValue('Asif Foam Center — Business Report'),
+        cellStyle: CellStyle(bold: true, fontSize: 14));
+    summarySheet.updateCell(CellIndex.indexByString('A2'), TextCellValue('Period: ${_rangeLabel(startDate, endDate)}'));
+    summarySheet.updateCell(CellIndex.indexByString('A3'), TextCellValue('Generated: ${_dateFmt.format(DateTime.now())}'));
+
+    final metrics = [
+      ('Revenue', _fmtRaw(summary.revenue)),
+      ('COGS', _fmtRaw(summary.cogs)),
+      ('Gross Profit', _fmtRaw(summary.grossProfit)),
+      ('Expenses', _fmtRaw(summary.totalExpenses)),
+      ('Net Profit', _fmtRaw(summary.netProfit)),
+    ];
+    for (var i = 0; i < metrics.length; i++) {
+      final row = i + 5;
+      summarySheet.updateCell(CellIndex.indexByString('A$row'), TextCellValue(metrics[i].$1),
+          cellStyle: CellStyle(bold: true));
+      summarySheet.updateCell(CellIndex.indexByString('B$row'), TextCellValue(metrics[i].$2));
+    }
+
+    // Sheet 2: Sales Detail
+    final detailSheet = xl['Sales Detail'];
+    final headers = ['Date', 'Customer', 'Items', 'Amount', 'COGS', 'Profit'];
+    for (var c = 0; c < headers.length; c++) {
+      final col = String.fromCharCode(65 + c);
+      detailSheet.updateCell(CellIndex.indexByString('$col${1}'), TextCellValue(headers[c]), cellStyle: CellStyle(
+        bold: true,
+        fontColorHex: ExcelColor.white,
+        backgroundColorHex: ExcelColor.fromHexString('FF0F6B64'),
+      ));
+    }
+
+    final productMap = {for (final p in products) p.id: p};
+    int row = 2;
+    for (final s in sales) {
+      if (s.isVoided || s.isQuote) continue;
+      final items = s.lineItems.map((li) {
+        final prod = productMap[li.productId];
+        return prod?.name ?? li.productId;
+      }).join(', ');
+      double cogs = 0;
+      for (final li in s.lineItems) {
+        double unitCost = li.costPriceAtSale;
+        if (unitCost <= 0) {
+          final prod = productMap[li.productId];
+          unitCost = prod?.costPrice ?? 0;
+        }
+        if (unitCost <= 0) unitCost = li.salePrice * 0.70;
+        cogs += li.qtyOrArea * unitCost;
+      }
+      detailSheet.updateCell(CellIndex.indexByString('A$row'), TextCellValue(_dateFmt.format(s.date)));
+      detailSheet.updateCell(CellIndex.indexByString('B$row'), TextCellValue(s.customerName ?? s.customerId.substring(0, 6)));
+      detailSheet.updateCell(CellIndex.indexByString('C$row'), TextCellValue(items.length > 25 ? '${items.substring(0, 25)}...' : items));
+      detailSheet.updateCell(CellIndex.indexByString('D$row'), TextCellValue(_fmtRaw(s.amount)));
+      detailSheet.updateCell(CellIndex.indexByString('E$row'), TextCellValue(_fmtRaw(cogs)));
+      detailSheet.updateCell(CellIndex.indexByString('F$row'), TextCellValue(_fmtRaw(s.amount - cogs)));
+      row++;
+    }
+
+    final dir = await getApplicationDocumentsDirectory();
+    final fileName = 'foam_shop_report_${_dateFmtFile.format(DateTime.now())}.xlsx';
+    final fileBytes = xl.save();
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsBytes(fileBytes!);
+    return file;
   }
 }

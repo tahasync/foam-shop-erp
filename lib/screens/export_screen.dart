@@ -117,7 +117,23 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         endDate: range.end,
       );
 
-      if (type == 'pdf') {
+      if (type == 'xlsx') {
+        final xlsxFile = await service.generateXlsxReport(
+          sales: sales,
+          products: products,
+          summary: summary,
+          startDate: range.start,
+          endDate: range.end,
+        );
+        if (!mounted) return;
+        setState(() => _loading = false);
+        final bytes = await xlsxFile.readAsBytes();
+        final fileName = xlsxFile.path.split('/').last;
+        await FileSaver.instance.saveFile(name: fileName.replaceAll('.xlsx', ''), bytes: bytes, ext: 'xlsx', mimeType: MimeType.microsoftExcel);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to Downloads: $fileName')));
+        }
+      } else if (type == 'pdf') {
         final pdfFile = await service.generatePdfReport(
           sales: sales,
           products: products,
@@ -377,10 +393,19 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                 Row(children: [
                   Expanded(
                     child: _exportButton(
-                      label: 'CSV (Excel)',
+                      label: 'CSV',
                       icon: Icons.table_chart_outlined,
                       color: cs.primary,
                       onTap: () => _export('csv'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _exportButton(
+                      label: 'Excel',
+                      icon: Icons.grid_on_rounded,
+                      color: AppTheme.sage,
+                      onTap: () => _export('xlsx'),
                     ),
                   ),
                   const SizedBox(width: 10),
