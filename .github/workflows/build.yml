@@ -39,14 +39,26 @@ jobs:
       - name: Decode Release Keystore
         run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
 
-      - name: Clean previous build artifacts
-        run: flutter clean
-
-      - name: Install Dependencies
-        run: flutter pub get
-
-      - name: Build Universal Release APK
-        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define-from-file=env/firebase_config.json
+      - name: Inject Version & Build Universal APK
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+            echo "::notice ::Building Tagged Release: $VERSION_NAME (Build: ${{ github.run_number }})"
+            sed -i -E "s/^version: .*/version: ${VERSION_NAME}+${{ github.run_number }}/" pubspec.yaml
+            flutter clean
+            flutter pub get
+            flutter build apk --release \
+              --build-name="$VERSION_NAME" \
+              --build-number=${{ github.run_number }} \
+              --dart-define-from-file=env/firebase_config.json
+          else
+            echo "::notice ::Building Main Commit (Build: ${{ github.run_number }})"
+            flutter clean
+            flutter pub get
+            flutter build apk --release \
+              --build-number=${{ github.run_number }} \
+              --dart-define-from-file=env/firebase_config.json
+          fi
         env:
           KEYSTORE_PATH: release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
