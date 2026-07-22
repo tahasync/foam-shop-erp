@@ -225,7 +225,7 @@ class _CustomerCard extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: ac.expenseTint,
-                child: Text(customer.name[0].toUpperCase(),
+                child: Text((customer.name.isNotEmpty ? customer.name[0] : '?').toUpperCase(),
                     style: TextStyle(fontWeight: FontWeight.w700, color: ac.expenseFg)),
               ),
               const SizedBox(width: 14),

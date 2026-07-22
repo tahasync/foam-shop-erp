@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/auth_provider.dart';
 
 class SignInScreen extends ConsumerWidget {
@@ -37,6 +38,14 @@ class SignInScreen extends ConsumerWidget {
                 onPressed: () async {
                   try {
                     await authService.signInWithGoogle();
+                    if (context.mounted) {
+                      final status = await Permission.storage.request();
+                      if (status.isGranted) {
+                        debugPrint('[Perm] Storage permission granted');
+                      } else {
+                        debugPrint('[Perm] Storage permission denied: $status');
+                      }
+                    }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(

@@ -67,12 +67,11 @@ class AccountSettingsScreen extends ConsumerWidget {
                   ),
                   SizedBox(
                     width: 150,
-                    height: 38,
                     child: SegmentedButton<ThemeMode>(
                       segments: const [
-                        ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.wb_sunny_outlined, size: 17)),
-                        ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto_rounded, size: 17)),
-                        ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.nightlight_round, size: 17)),
+                        ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.wb_sunny_outlined, size: 18)),
+                        ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 18)),
+                        ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.nights_stay_outlined, size: 18)),
                       ],
                       selected: {themeMode},
                       showSelectedIcon: false,
@@ -81,7 +80,7 @@ class AccountSettingsScreen extends ConsumerWidget {
                       style: SegmentedButton.styleFrom(
                         selectedBackgroundColor: cs.primaryContainer,
                         backgroundColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         visualDensity: VisualDensity.compact,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

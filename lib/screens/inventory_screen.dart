@@ -11,15 +11,38 @@ import '../theme/app_theme.dart';
 import '../utils/debounce.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
-  const InventoryScreen({super.key});
+  final bool initialLowStockFilter;
+  final String? highlightProductId;
+  const InventoryScreen({super.key, this.initialLowStockFilter = false, this.highlightProductId});
   @override
   ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
 }
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   final _searchCtrl = TextEditingController();
+  bool _didHighlight = false;
   final _searchDebounce = Debouncer();
   String _typeFilter = 'All';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialLowStockFilter) _typeFilter = 'Low Stock';
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didHighlight && widget.highlightProductId != null) {
+      _didHighlight = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final products = ref.read(productsStreamProvider).asData?.value ?? [];
+        final product = products.where((p) => p.id == widget.highlightProductId).firstOrNull;
+        if (product != null) _showOptions(product);
+      });
+    }
+  }
 
   @override
   void dispose() { _searchCtrl.dispose(); _searchDebounce.dispose(); super.dispose(); }

@@ -73,7 +73,7 @@ class CustomerKhataScreen extends ConsumerWidget {
                           CircleAvatar(
                             radius: 22,
                             backgroundColor: item.balance > 0 ? ac.expenseTint : ac.profitTint,
-                            child: Text(item.customer.name[0].toUpperCase(),
+                            child: Text((item.customer.name.isNotEmpty ? item.customer.name[0] : '?').toUpperCase(),
                                 style: TextStyle(fontWeight: FontWeight.w700,
                                     color: item.balance > 0 ? ac.expenseFg : ac.profitFg)),
                           ),
@@ -151,7 +151,7 @@ class _CustDetail extends ConsumerWidget {
                 Row(children: [
                   Container(width: 38, height: 38,
                     decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(12)),
-                    child: Text(customer.name[0].toUpperCase(), textAlign: TextAlign.center,
+                    child: Text((customer.name.isNotEmpty ? customer.name[0] : '?').toUpperCase(), textAlign: TextAlign.center,
                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: ac.inventoryFg))),
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

@@ -15,7 +15,8 @@ import 'reports_screen.dart';
 import 'export_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  final VoidCallback? onLowStockTap;
+  const DashboardScreen({super.key, this.onLowStockTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -97,7 +98,7 @@ class _GreetHeader extends ConsumerWidget {
       PopupMenuButton<String>(
         icon: CircleAvatar(
           radius: 16,
-          backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+          backgroundImage: user != null && user.photoURL != null ? NetworkImage(user.photoURL!) : null,
           child: user?.photoURL == null ? const Icon(Icons.person_rounded, size: 18) : null,
         ),
         itemBuilder: (_) => [

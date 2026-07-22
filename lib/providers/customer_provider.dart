@@ -11,11 +11,11 @@ final customersStreamProvider = StreamProvider<List<Customer>>((ref) {
   });
 });
 
-final customersWithBaqayaProvider = StreamProvider<List<Customer>>((ref) {
-  final service = ref.watch(firestoreServiceProvider);
-  return service.customersWithBaqayaStream.map((snap) {
-    return snap.docs.map((doc) {
-      return Customer.fromMap(doc.data() as Map<String, dynamic>);
-    }).toList();
-  });
+final customersWithBaqayaProvider = Provider<AsyncValue<List<Customer>>>((ref) {
+  final customersAsync = ref.watch(customersStreamProvider);
+  return customersAsync.when(
+    data: (list) => AsyncValue.data(list.where((c) => c.baqaya > 0).toList()),
+    loading: () => const AsyncValue.loading(),
+    error: (e, st) => AsyncValue.error(e, st),
+  );
 });

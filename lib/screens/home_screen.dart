@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import '../providers/product_provider.dart';
 import '../services/update_checker.dart';
 import '../widgets/custom_nav_bar.dart';
 import 'inventory_screen.dart';
@@ -17,18 +18,26 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _tab = 0;
   bool _checkedUpdate = false;
-
-  final _screens = [
-    const DashboardScreen(),
-    const SalesEntryScreen(),
-    const InventoryScreen(),
-    const CustomerKhataScreen(),
-  ];
+  bool _invLowStockFilter = false;
+  String? _invHighlightId;
 
   @override
   void initState() {
     super.initState();
     _checkUpdate();
+  }
+
+  void _goToInventory() {
+    final products = ref.read(productsStreamProvider).asData?.value ?? [];
+    final lowStock = products.where((p) => p.isLowStock).toList();
+    if (lowStock.length == 1) {
+      _invHighlightId = lowStock.first.id;
+      _invLowStockFilter = false;
+    } else {
+      _invLowStockFilter = lowStock.isNotEmpty;
+      _invHighlightId = null;
+    }
+    setState(() => _tab = 2);
   }
 
   Future<void> _checkUpdate() async {
@@ -47,17 +56,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).padding.bottom;
-    return Scaffold(
-      body: Padding(
-        padding: EdgeInsets.only(bottom: 96 + bottom),
-        child: _screens[_tab],
+    final screens = <Widget>[
+      DashboardScreen(onLowStockTap: _goToInventory),
+      const SalesEntryScreen(),
+      InventoryScreen(
+        initialLowStockFilter: _invLowStockFilter,
+        highlightProductId: _invHighlightId,
       ),
-      bottomNavigationBar: CustomNavBar(
-        currentIndex: _tab,
-        onTap: (i) => setState(() => _tab = i),
+      const CustomerKhataScreen(),
+    ];
+
+    return Scaffold(
+      extendBody: true,
+      body: screens[_tab],
+      bottomNavigationBar: Container(
+        color: Colors.transparent,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+            child: Container(
+              height: 64,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 6)),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: CustomNavBar(
+                  currentIndex: _tab,
+                  onTap: (i) => setState(() => _tab = i),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
-
 }

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -10,8 +9,8 @@ import '../providers/sale_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/export_provider.dart';
+import 'package:file_saver/file_saver.dart';
 import '../theme/app_theme.dart';
-import '../widgets/save_success_sheet.dart';
 
 enum ExportPeriod { daily, weekly, monthly, custom }
 
@@ -109,9 +108,8 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         endDate: range.end,
       );
 
-      File file;
       if (type == 'pdf') {
-        file = await service.generatePdfReport(
+        final pdfFile = await service.generatePdfReport(
           sales: sales,
           products: products,
           summary: summary,
@@ -119,35 +117,31 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           endDate: range.end,
           shopName: 'Asif Foam Center',
         );
+        if (!mounted) return;
+        setState(() => _loading = false);
+        final bytes = await pdfFile.readAsBytes();
+        final fileName = pdfFile.path.split('/').last;
+        await FileSaver.instance.saveFile(name: fileName.replaceAll('.pdf', ''), bytes: bytes, ext: 'pdf', mimeType: MimeType.pdf);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to Downloads: $fileName')));
+        }
       } else {
-        file = await service.generateCsvReport(
+        final csvFile = await service.generateCsvReport(
           sales: sales,
           products: products,
           summary: summary,
           startDate: range.start,
           endDate: range.end,
         );
+        if (!mounted) return;
+        setState(() => _loading = false);
+        final bytes = await csvFile.readAsBytes();
+        final fileName = csvFile.path.split('/').last;
+        await FileSaver.instance.saveFile(name: fileName.replaceAll('.csv', ''), bytes: bytes, ext: 'csv', mimeType: MimeType.csv);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to Downloads: $fileName')));
+        }
       }
-
-      if (!mounted) return;
-      setState(() => _loading = false);
-
-      final fileName = file.path.split(Platform.pathSeparator).last;
-      SaveSuccessSheet.show(
-        context: context,
-        title: 'Report Exported',
-        subtitle: '${type.toUpperCase()} saved to device storage',
-        items: [
-          SheetLineItem(label: 'File name', value: fileName),
-          SheetLineItem(label: 'Location', value: 'Downloads'),
-        ],
-        paid: 0,
-        total: 0,
-        printLabel: 'Open File',
-        onPrint: () {},
-        newLabel: 'Done',
-        onNew: () {},
-      );
     } catch (e) {
       if (!mounted) return;
       setState(() { _loading = false; _error = '$e'; });

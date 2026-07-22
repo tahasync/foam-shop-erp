@@ -19,6 +19,8 @@ void main() {
     WidgetsFlutterBinding.ensureInitialized();
 
     ErrorWidget.builder = (details) {
+      debugPrint('[FATAL] Widget error: ${details.exception}');
+      debugPrint('[FATAL] Stack: ${details.stack}');
       final theme = AppTheme.light();
       return Material(
         color: theme.colorScheme.surface,
