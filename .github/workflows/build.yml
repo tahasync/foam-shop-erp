@@ -1,8 +1,12 @@
-name: Build APK on Push
+name: Build APK
 
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -22,10 +26,10 @@ jobs:
         with:
           channel: 'stable'
           architecture: x64
+          cache: true
 
       - name: Decode Firebase Config
-        run: |
-          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
 
       - name: Write Firebase Config
         run: |
@@ -35,27 +39,33 @@ jobs:
       - name: Decode Release Keystore
         run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
 
-      # Prevent stale APKs: clean build artifacts before fresh build
       - name: Clean previous build artifacts
         run: flutter clean
 
       - name: Install Dependencies
         run: flutter pub get
 
-      # Build single universal APK (fat APK with all architectures)
       - name: Build Universal Release APK
-        run: flutter build apk --release --dart-define-from-file=env/firebase_config.json
+        run: flutter build apk --release --build-number=${{ github.run_number }} --dart-define-from-file=env/firebase_config.json
         env:
           KEYSTORE_PATH: release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-      # Upload strictly the single universal APK
-      - name: Upload Universal APK
+      - name: Upload APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-universal-release
+          name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           overwrite: true
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
