@@ -10,7 +10,6 @@ import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../widgets/torn_receipt_card.dart';
-import '../widgets/stitched_divider.dart';
 import '../widgets/save_success_sheet.dart';
 
 class CustomerKhataScreen extends ConsumerWidget {
@@ -187,11 +186,13 @@ class _CustDetail extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const StitchedDivider(),
                 Row(children: [
                   Text('History', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
                       letterSpacing: 0.06, color: cs.onSurfaceVariant)),
-                  const Spacer(),
+                  const SizedBox(width: 8),
+                  Expanded(child: Container(height: 1, decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: cs.outlineVariant, width: 1))),
+                      margin: const EdgeInsets.only(top: 6))),
                 ]),
                 const SizedBox(height: 9),
                 if (txns.isEmpty)
