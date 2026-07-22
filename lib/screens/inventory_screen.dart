@@ -55,7 +55,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Inventory')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
+        child: FloatingActionButton(
         key: const ValueKey('add_product_fab'),
         backgroundColor: AppTheme.amber,
         foregroundColor: const Color(0xFF2A1A00),
@@ -63,6 +65,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         onPressed: _addProduct,
         child: const Icon(Icons.add_rounded, size: 22),
+      ),
       ),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

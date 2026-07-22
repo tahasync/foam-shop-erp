@@ -4,39 +4,31 @@ import '../theme/app_theme.dart';
 class CustomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final bool showInventoryDot;
+  final bool showKhataDot;
 
-  const CustomNavBar({super.key, required this.currentIndex, required this.onTap});
+  const CustomNavBar({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+    this.showInventoryDot = false,
+    this.showKhataDot = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(14, 0, 14, bottomInset + 12),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: cs.outlineVariant),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 26, offset: const Offset(0, 12)),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _navItem(context, 0, Icons.dashboard_rounded, 'Dashboard'),
-            _navItem(context, 1, Icons.sell_rounded, 'Sales'),
-            _navItem(context, 2, Icons.inventory_2_rounded, 'Inventory'),
-            _navItem(context, 3, Icons.people_rounded, 'Khata'),
-          ],
-        ),
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _navItem(context, 0, Icons.dashboard_rounded, 'Dashboard', false),
+        _navItem(context, 1, Icons.sell_rounded, 'Sales', false),
+        _navItem(context, 2, Icons.inventory_2_rounded, 'Inventory', showInventoryDot),
+        _navItem(context, 3, Icons.people_rounded, 'Khata', showKhataDot),
+      ],
     );
   }
 
-  Widget _navItem(BuildContext context, int index, IconData icon, String label) {
+  Widget _navItem(BuildContext context, int index, IconData icon, String label, bool showDot) {
     final active = index == currentIndex;
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
@@ -55,13 +47,12 @@ class CustomNavBar extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Icon(icon, size: 18, color: active ? AppTheme.teal : cs.onSurfaceVariant),
-                if (active)
+                if (showDot)
                   Positioned(
                     top: -2,
-                    right: -6,
+                    right: -4,
                     child: Container(
-                      width: 5,
-                      height: 5,
+                      width: 6, height: 6,
                       decoration: BoxDecoration(
                         color: AppTheme.amber,
                         shape: BoxShape.circle,

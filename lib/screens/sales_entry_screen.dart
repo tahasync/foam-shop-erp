@@ -350,8 +350,8 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('New Sale')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      body: Builder(builder: (context) => ListView(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 100 + MediaQuery.of(context).padding.bottom),
         children: [
           Container(
             padding: const EdgeInsets.all(12),
@@ -582,6 +582,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
           ),
         ],
+      ),
       ),
     );
   }

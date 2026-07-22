@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../providers/product_provider.dart';
+import '../providers/dashboard_provider.dart';
 import '../services/update_checker.dart';
 import '../widgets/custom_nav_bar.dart';
 import 'inventory_screen.dart';
@@ -56,6 +57,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final as = ref.watch(accountingSummaryProvider);
+    final lowStockCount = as.asData?.value.lowStockCount ?? 0;
+    final khataCount = ref.watch(accountingSummaryProvider).asData?.value.totalCustomerBaqaya ?? 0;
+
     final screens = <Widget>[
       DashboardScreen(onLowStockTap: _goToInventory),
       const SalesEntryScreen(),
@@ -79,16 +84,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               height: 64,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(26),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 6)),
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 26, offset: const Offset(0, 10)),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(26),
                 child: CustomNavBar(
                   currentIndex: _tab,
                   onTap: (i) => setState(() => _tab = i),
+                  showInventoryDot: lowStockCount > 0,
+                  showKhataDot: khataCount > 0,
                 ),
               ),
             ),
