@@ -11,6 +11,7 @@ import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/export_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/save_success_sheet.dart';
 
 enum ExportPeriod { daily, weekly, monthly, custom }
 
@@ -131,11 +132,21 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       if (!mounted) return;
       setState(() => _loading = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Exported → ${file.path}'),
-          action: SnackBarAction(label: 'OK', onPressed: () {}),
-        ),
+      final fileName = file.path.split(Platform.pathSeparator).last;
+      SaveSuccessSheet.show(
+        context: context,
+        title: 'Report Exported',
+        subtitle: '${type.toUpperCase()} saved to device storage',
+        items: [
+          SheetLineItem(label: 'File name', value: fileName),
+          SheetLineItem(label: 'Location', value: 'Downloads'),
+        ],
+        paid: 0,
+        total: 0,
+        printLabel: 'Open File',
+        onPrint: () {},
+        newLabel: 'Done',
+        onNew: () {},
       );
     } catch (e) {
       if (!mounted) return;

@@ -57,23 +57,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           return Column(children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: cs.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cs.outlineVariant),
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: InputDecoration(
+                  hintText: 'Search products\u2026',
+                  hintStyle: TextStyle(color: ac.inkFaint, fontSize: 12.5),
+                  filled: true,
+                  fillColor: cs.surfaceContainerLowest,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.inkFaint),
                 ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'Search products\u2026',
-                    hintStyle: TextStyle(color: ac.inkFaint, fontSize: 12.5),
-                    border: InputBorder.none,
-                    prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.inkFaint),
-                  ),
-                  onChanged: (_) => _searchDebounce.call(() => setState(() {})),
-                ),
+                onChanged: (_) => _searchDebounce.call(() => setState(() {})),
               ),
             ),
             const SizedBox(height: 6),

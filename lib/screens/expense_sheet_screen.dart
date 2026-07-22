@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 import '../providers/firebase_providers.dart';
+import 'package:intl/intl.dart';
+import '../widgets/save_success_sheet.dart';
 import '../theme/app_theme.dart';
 
 const _categories = ['Cutting Labor', 'Transport', 'Electricity', 'Packaging', 'Rent', 'Tea / Misc', 'Other'];
@@ -152,8 +154,22 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
             final a = double.tryParse(ac.text) ?? 0;
             if (a <= 0) return;
             final s = ref.read(firestoreServiceProvider);
-            await s.addExpense(Expense(id: s.generateId(), date: date, category: cat, description: dc.text.trim(), amount: a));
+            final cat2 = cat;
+            await s.addExpense(Expense(id: s.generateId(), date: date, category: cat2, description: dc.text.trim(), amount: a));
             if (ctx.mounted) Navigator.pop(ctx);
+            if (context.mounted) {
+              SaveSuccessSheet.show(
+                context: context,
+                title: 'Expense Saved',
+                subtitle: '$cat2 \u00b7 Rs ${NumberFormat('#,##0').format(a.toInt())}',
+                items: [SheetLineItem(label: dc.text.trim().isEmpty ? cat2 : dc.text.trim(), value: 'Rs ${NumberFormat('#,##0').format(a.toInt())}')],
+                paid: a,
+                total: a,
+                printLabel: '',
+                newLabel: '+ Add Expense',
+                onNew: () {},
+              );
+            }
           }, child: const Text('Save')),
         ],
       ),

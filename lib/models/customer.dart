@@ -22,8 +22,8 @@ class Customer {
       };
 
   factory Customer.fromMap(Map<String, dynamic> map) => Customer(
-        id: map['id'] as String,
-        name: map['name'] as String,
+        id: (map['id'] as String?) ?? '',
+        name: (map['name'] as String?)?.trim().isEmpty == true ? 'Unnamed Customer' : (map['name'] as String?) ?? 'Unnamed Customer',
         phone: map['phone'] as String? ?? '',
         baqaya: (map['baqaya'] as num?)?.toDouble() ?? 0,
         isArchived: map['is_archived'] as bool? ?? false,

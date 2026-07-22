@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/stitched_divider.dart';
+import 'account_settings_screen.dart';
+import 'billing_screen.dart';
+import 'expense_sheet_screen.dart';
+import 'customer_recovery_screen.dart';
+import 'supplier_khata_screen.dart';
+import 'reports_screen.dart';
+import 'export_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -20,7 +28,7 @@ class DashboardScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (d) => SafeArea(
           child: ListView(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 24 + bottom),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + bottom),
             children: [
               _GreetHeader(),
               const SizedBox(height: 16),
@@ -59,32 +67,61 @@ class _GreetHeader extends ConsumerWidget {
     final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     final dateStr = '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]} ${now.year}';
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    final authState = ref.watch(authStateProvider);
+    final authService = ref.watch(authServiceProvider);
+    final user = authState.asData?.value;
+    return Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Asif Foam Center', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800, fontSize: 18, letterSpacing: -0.01, color: cs.onSurface)),
+              fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: -0.01, color: cs.onSurface)),
           const SizedBox(height: 2),
-          Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: ac.saleTint, borderRadius: BorderRadius.circular(999)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 6, height: 6,
-                  decoration: BoxDecoration(color: AppTheme.sage, shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: AppTheme.sage.withValues(alpha: 0.3), blurRadius: 4, spreadRadius: 2)])),
-              const SizedBox(width: 5),
-              Text('Synced just now', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: ac.saleFg)),
-            ]),
-          ),
+          Row(children: [
+            Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(color: ac.saleTint, borderRadius: BorderRadius.circular(999)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 5, height: 5,
+                    decoration: BoxDecoration(color: AppTheme.sage, shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: AppTheme.sage.withValues(alpha: 0.3), blurRadius: 3, spreadRadius: 1.5)])),
+                const SizedBox(width: 4),
+                Text('Synced', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ac.saleFg)),
+              ]),
+            ),
+          ]),
         ]),
       ),
-      const SizedBox(width: 12),
-      Container(width: 34, height: 34,
-        decoration: BoxDecoration(color: cs.surfaceContainerLowest, borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: cs.outlineVariant)),
-        child: Icon(Icons.person_rounded, size: 18, color: cs.onSurfaceVariant)),
+      const SizedBox(width: 8),
+      PopupMenuButton<String>(
+        icon: CircleAvatar(
+          radius: 16,
+          backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+          child: user?.photoURL == null ? const Icon(Icons.person_rounded, size: 18) : null,
+        ),
+        itemBuilder: (_) => [
+          const PopupMenuItem(value: 'settings', child: Text('Account / Settings')),
+          const PopupMenuItem(value: 'billing', child: Text('Billing')),
+          const PopupMenuItem(value: 'expenses', child: Text('Expenses')),
+          const PopupMenuItem(value: 'recovery', child: Text('Recovery')),
+          const PopupMenuItem(value: 'supplier', child: Text('Supplier Khata')),
+          const PopupMenuItem(value: 'reports', child: Text('Reports')),
+          const PopupMenuItem(value: 'export', child: Text('Export Reports')),
+          const PopupMenuDivider(),
+          PopupMenuItem(value: 'signout', child: Text('Sign Out', style: TextStyle(color: cs.error))),
+        ],
+        onSelected: (v) async {
+          if (v == 'signout') await authService.signOut();
+          else if (v == 'settings') _push(context, const AccountSettingsScreen());
+          else if (v == 'billing') _push(context, const BillingScreen());
+          else if (v == 'expenses') _push(context, const ExpenseSheetScreen());
+          else if (v == 'recovery') _push(context, const CustomerRecoveryScreen());
+          else if (v == 'supplier') Navigator.push(context, MaterialPageRoute(builder: (_) => const SupplierKhataScreen()));
+          else if (v == 'reports') Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsScreen()));
+          else if (v == 'export') Navigator.push(context, MaterialPageRoute(builder: (_) => const ExportScreen()));
+        },
+      ),
     ]);
   }
 }
@@ -194,3 +231,6 @@ class _LowStockAlert extends StatelessWidget {
     );
   }
 }
+
+void _push(BuildContext context, Widget screen) =>
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));

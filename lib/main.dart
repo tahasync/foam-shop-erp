@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -49,6 +50,10 @@ void main() {
       FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
       await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+      ui.PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack);
+        return true;
+      };
       final authService = AuthService();
       await authService.initialize();
     } catch (e) {

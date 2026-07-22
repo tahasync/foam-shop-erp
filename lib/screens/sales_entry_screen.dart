@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sale.dart';
 import '../models/customer.dart';
+import '../models/product.dart';
 import '../providers/product_provider.dart';
 import '../providers/sales_provider.dart';
 import '../providers/customer_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 import '../utils/debounce.dart';
+import '../widgets/save_success_sheet.dart';
 
 class CartWidget extends ConsumerStatefulWidget {
   final CartItem item;
@@ -132,9 +135,24 @@ class SalesEntryScreen extends ConsumerStatefulWidget {
 class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   final _paidCtrl = TextEditingController(text: '0');
   final _paidDebounce = Debouncer();
+  final _searchCtrl = TextEditingController();
+  final _searchFocus = FocusNode();
+  bool _searchFocused = false;
 
   @override
-  void dispose() { _paidCtrl.dispose(); _paidDebounce.dispose(); super.dispose(); }
+  void initState() {
+    super.initState();
+    _searchFocus.addListener(() => setState(() => _searchFocused = _searchFocus.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    _paidCtrl.dispose();
+    _paidDebounce.dispose();
+    _searchCtrl.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
 
   Future<Customer?> _addNewCustomerFromDialog() async {
     final nc = TextEditingController();
@@ -180,6 +198,66 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     if (result != null && mounted) {
       ref.read(salesProvider.notifier).setCustomer(result.id, result.name);
     }
+  }
+
+  List<Product> _filteredProducts(List<Product> products) {
+    final q = _searchCtrl.text.toLowerCase();
+    if (q.isEmpty) return [];
+    return products.where((p) => p.name.toLowerCase().contains(q)).toList();
+  }
+
+  Widget _buildSearchResult(Product p, BuildContext context, ColorScheme cs, AppColors ac) {
+    final q = _searchCtrl.text.toLowerCase();
+    final idx = p.name.toLowerCase().indexOf(q);
+    final outOfStock = p.currentStock <= 0;
+    return InkWell(
+      onTap: () {
+        if (outOfStock) return;
+        _searchCtrl.clear();
+        setState(() {});
+        ref.read(salesProvider.notifier).addToCart(p);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: cs.outlineVariant, width: 0.5))),
+        child: Row(children: [
+          Container(width: 34, height: 34,
+            decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(9)),
+            child: Icon(Icons.inventory_2_rounded, size: 15, color: ac.inventoryFg)),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            RichText(text: TextSpan(
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: cs.onSurface),
+              children: [
+                if (idx >= 0) ...[
+                  TextSpan(text: p.name.substring(0, idx)),
+                  TextSpan(text: p.name.substring(idx, idx + q.length),
+                      style: TextStyle(background: Paint()..color = ac.saleTint, color: ac.saleFg, fontWeight: FontWeight.w800)),
+                  TextSpan(text: p.name.substring(idx + q.length)),
+                ] else
+                  TextSpan(text: p.name),
+              ],
+            )),
+            const SizedBox(height: 1),
+            Text('${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in \u00b7 ${p.currentStock.toInt()} in stock',
+                style: TextStyle(fontSize: 10, color: cs.onSurfaceVariant)),
+          ])),
+          const SizedBox(width: 8),
+          Text('Rs ${NumberFormat('#,##0').format(p.effectivePrice.toInt())}',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: ac.saleFg,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+          const SizedBox(width: 8),
+          Container(
+            width: 24, height: 24,
+            decoration: BoxDecoration(
+              color: outOfStock ? cs.onSurfaceVariant : AppTheme.teal,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.add_rounded, size: 14, color: Colors.white),
+          ),
+        ]),
+      ),
+    );
   }
 
   Future<void> _save({required bool isQuote}) async {
@@ -237,22 +315,26 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
     if (!mounted) return;
 
     ref.invalidate(accountingSummaryProvider);
+    final itemsCopy = List<CartItem>.from(state.cart);
+    final custName = state.customerName;
+    final totalItems = state.totalItems;
     ref.read(salesProvider.notifier).clearCart();
     _paidCtrl.text = '0';
 
-    final itemsSummary = state.cart.map((c) =>
-        '  ${c.product.name} \u00d7${c.quantity} = Rs ${c.lineTotal.toStringAsFixed(0)}').join('\n');
-    final msg = '${isQuote ? 'Quote' : 'Sale'} saved!\n'
-        'Customer: ${state.customerName}\n'
-        'Items: ${state.totalItems}\n'
-        'Total: Rs ${subtotal.toStringAsFixed(0)}\n'
-        'Paid: Rs ${paid.toStringAsFixed(0)}\n'
-        'Balance: Rs ${balance.toStringAsFixed(0)}\n'
-        '---\n$itemsSummary';
-
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 5)),
+      SaveSuccessSheet.show(
+        context: context,
+        title: '${isQuote ? 'Quote' : 'Sale'} Saved',
+        subtitle: '$custName · $totalItems items',
+        items: itemsCopy.map((c) => SheetLineItem(
+          label: '${c.product.name} \u00d7 ${c.quantity}',
+          value: 'Rs ${NumberFormat('#,##0').format(c.lineTotal.toInt())}',
+        )).toList(),
+        paid: paid,
+        total: subtotal,
+        onPrint: null,
+        onNew: () {},
+        newLabel: '+ New Sale',
       );
     }
   }
@@ -309,58 +391,83 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
           productsAsync.when(
             loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
             error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
-            data: (products) => SearchAnchor(
-              builder: (context, controller) => SearchBar(
-                controller: controller,
-                hintText: 'Search products\u2026',
-                leading: const Padding(
-                  padding: EdgeInsets.only(left: 4),
-                  child: Icon(Icons.search_rounded, size: 20),
+            data: (products) => Column(children: [
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: _searchFocused ? AppTheme.teal : cs.outlineVariant, width: _searchFocused ? 1.5 : 1),
+                  boxShadow: _searchFocused
+                      ? [BoxShadow(color: AppTheme.teal.withValues(alpha: 0.12), blurRadius: 8, spreadRadius: 2)]
+                      : null,
                 ),
-                padding: WidgetStateProperty.all(
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocus,
+                  decoration: InputDecoration(
+                    hintText: 'Search products\u2026',
+                    filled: true,
+                    fillColor: cs.surface,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    prefixIcon: Icon(Icons.search_rounded, size: 18, color: _searchFocused ? AppTheme.teal : ac.inkFaint),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () { _searchCtrl.clear(); setState(() {}); },
+                            child: Container(
+                              margin: const EdgeInsets.all(8),
+                              width: 18, height: 18,
+                              decoration: BoxDecoration(color: ac.saleTint, shape: BoxShape.circle),
+                              child: Icon(Icons.close_rounded, size: 12, color: ac.saleFg)),
+                          )
+                        : null,
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                elevation: WidgetStateProperty.all(0),
-                backgroundColor: WidgetStateProperty.all(cs.surfaceContainerLowest),
-                side: WidgetStateProperty.all(BorderSide(color: cs.outlineVariant)),
-                onTap: () => controller.openView(),
-                readOnly: true,
               ),
-              suggestionsBuilder: (context, controller) {
-                final query = controller.text.toLowerCase();
-                return products
-                    .where((p) =>
-                        query.isEmpty || p.name.toLowerCase().contains(query))
-                    .map((p) => ListTile(
-                          leading: Container(
-                            width: 32, height: 32,
-                            decoration: BoxDecoration(color: ac.inventoryTint, borderRadius: BorderRadius.circular(8)),
-                            child: Icon(Icons.inventory_2_rounded, size: 15, color: ac.inventoryFg),
+              if (_searchCtrl.text.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: cs.outlineVariant),
+                    boxShadow: [BoxShadow(color: cs.shadow, blurRadius: 16, offset: const Offset(0, 8))],
+                  ),
+                  child: Column(children: [
+                    for (final p in _filteredProducts(products))
+                      _buildSearchResult(p, context, cs, ac),
+                  ]),
+                ),
+              if (_searchCtrl.text.isEmpty && salesState.recentProductIds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Wrap(
+                    spacing: 7, runSpacing: 7,
+                    children: salesState.recentProductIds.map((id) {
+                      final p = products.where((x) => x.id == id).firstOrNull;
+                      if (p == null) return const SizedBox.shrink();
+                      return GestureDetector(
+                        onTap: () {
+                          if (p.currentStock <= 0) return;
+                          ref.read(salesProvider.notifier).addToCart(p);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: ac.inventoryTint,
+                            borderRadius: BorderRadius.circular(999),
                           ),
-                          title: Text(p.name,
-                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: cs.onSurface)),
-                          subtitle: Text(
-                              '${p.sizeLength.toStringAsFixed(0)}in \u00d7 ${p.sizeWidth.toStringAsFixed(0)}in \u00b7 ${p.thickness.toStringAsFixed(0)}in',
-                              style: TextStyle(fontSize: 10.5, color: cs.onSurfaceVariant)),
-                          trailing: Text('Rs ${p.effectivePrice.toStringAsFixed(0)}',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13,
-                                  fontFeatures: [FontFeature('tnum')], color: cs.onSurface)),
-                          onTap: () {
-                            controller.closeView('');
-                            if (p.currentStock <= 0) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Out of stock!')),
-                              );
-                              return;
-                            }
-                            ref.read(salesProvider.notifier).addToCart(p);
-                          },
-                        ));
-              },
-            ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.access_time_rounded, size: 10, color: ac.inventoryFg),
+                            const SizedBox(width: 4),
+                            Text(p.name, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: ac.inventoryFg)),
+                          ]),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ]),
           ),
           const SizedBox(height: 10),
           Row(children: [
@@ -419,25 +526,22 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('Paid (PKR)', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: cs.outlineVariant),
+                TextField(
+                  controller: _paidCtrl,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => _paidDebounce.call(() => setState(() {})),
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    filled: true,
+                    fillColor: cs.surfaceContainerLowest,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                   ),
-                  child: TextField(
-                    controller: _paidCtrl,
-                    keyboardType: TextInputType.number,
-                    onChanged: (_) => _paidDebounce.call(() => setState(() {})),
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                        fontFeatures: [FontFeature('tnum')], color: cs.onSurface),
-                  ),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                      fontFeatures: [FontFeature('tnum')], color: cs.onSurface),
                 ),
               ]),
             ),

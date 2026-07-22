@@ -8,8 +8,10 @@ import '../providers/payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
 import '../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/stitched_divider.dart';
+import '../widgets/save_success_sheet.dart';
 
 class CustomerKhataScreen extends ConsumerWidget {
   const CustomerKhataScreen({super.key});
@@ -171,16 +173,17 @@ class _CustDetail extends ConsumerWidget {
                     width: double.infinity,
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.teal,
-                        foregroundColor: Colors.white,
+                        backgroundColor: balance <= 0 ? null : AppTheme.teal,
+                        foregroundColor: balance <= 0 ? null : Colors.white,
                         minimumSize: const Size(double.infinity, 44),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                         elevation: 0,
                         shadowColor: AppTheme.teal.withValues(alpha: 0.32),
                       ),
-                      onPressed: () => _collectPayment(context, ref, customer),
-                      icon: const Icon(Icons.credit_card_rounded, size: 16),
-                      label: const Text('Collect Payment', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                      onPressed: balance <= 0 ? null : () => _collectPayment(context, ref, customer),
+                      icon: Icon(balance <= 0 ? Icons.check_circle_rounded : Icons.credit_card_rounded, size: 16),
+                      label: Text(balance <= 0 ? 'Khata Cleared' : 'Collect Payment',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                     ),
                   ),
                 ),
@@ -247,7 +250,21 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer) {
         final s = ref.read(firestoreServiceProvider);
         final payment = Payment(id: s.generateId(), date: DateTime.now(), customerId: customer.id, amountCollected: amt);
         Navigator.of(ctx).pop();
-        s.savePaymentTransaction(payment).then((_) => ref.invalidate(accountingSummaryProvider)).catchError((_) {});
+        s.savePaymentTransaction(payment).then((_) {
+          ref.invalidate(accountingSummaryProvider);
+          if (context.mounted) {
+            SaveSuccessSheet.show(
+              context: context,
+              title: 'Payment Collected',
+              subtitle: '${customer.name} \u00b7 Rs ${NumberFormat('#,##0').format(amt.toInt())}',
+              items: [SheetLineItem(label: customer.name, value: 'Rs ${NumberFormat('#,##0').format(amt.toInt())}')],
+              paid: amt,
+              total: amt,
+              newLabel: '+ Collect Again',
+              onNew: () {},
+            );
+          }
+        }).catchError((_) {});
       }, child: const Text('Save')),
     ],
   )).then((_) => ctrl.dispose());

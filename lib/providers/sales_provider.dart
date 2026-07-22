@@ -16,18 +16,30 @@ class SalesState {
   final List<CartItem> cart;
   final String customerId;
   final String customerName;
+  final List<String> recentProductIds;
 
-  const SalesState({this.cart = const [], this.customerId = '', this.customerName = 'Walk-in Customer'});
+  const SalesState({
+    this.cart = const [],
+    this.customerId = '',
+    this.customerName = 'Walk-in Customer',
+    this.recentProductIds = const [],
+  });
 
   int get totalItems => cart.fold(0, (s, i) => s + i.quantity);
 
   double get subtotal => cart.fold(0.0, (s, i) => s + i.lineTotal);
 
-  SalesState copyWith({List<CartItem>? cart, String? customerId, String? customerName}) {
+  SalesState copyWith({
+    List<CartItem>? cart,
+    String? customerId,
+    String? customerName,
+    List<String>? recentProductIds,
+  }) {
     return SalesState(
       cart: cart ?? this.cart,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
+      recentProductIds: recentProductIds ?? this.recentProductIds,
     );
   }
 }
@@ -38,13 +50,20 @@ class SalesNotifier extends Notifier<SalesState> {
 
   void addToCart(Product product) {
     if (product.currentStock <= 0) return;
+    final recent = List<String>.from(state.recentProductIds);
+    recent.remove(product.id);
+    recent.insert(0, product.id);
+    if (recent.length > 6) recent.removeLast();
     final existing = state.cart.where((c) => c.product.id == product.id).firstOrNull;
     if (existing != null) {
       if (existing.quantity >= product.currentStock) return;
       existing.quantity++;
-      state = state.copyWith(cart: [...state.cart]);
+      state = state.copyWith(cart: [...state.cart], recentProductIds: recent);
     } else {
-      state = state.copyWith(cart: [...state.cart, CartItem(product: product, quantity: 1)]);
+      state = state.copyWith(
+        cart: [...state.cart, CartItem(product: product, quantity: 1)],
+        recentProductIds: recent,
+      );
     }
   }
 

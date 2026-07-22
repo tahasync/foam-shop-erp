@@ -8,7 +8,9 @@ import '../providers/sale_provider.dart';
 import '../providers/payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/dashboard_provider.dart';
+import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
+import '../widgets/save_success_sheet.dart';
 
 class CustomerRecoveryScreen extends ConsumerStatefulWidget {
   const CustomerRecoveryScreen({super.key});
@@ -45,8 +47,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 color: cs.surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: cs.outlineVariant),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: TextField(
                 controller: _searchCtrl,
@@ -54,6 +55,7 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                   hintText: 'Search customers\u2026',
                   hintStyle: TextStyle(color: ac.inkFaint, fontSize: 12.5),
                   border: InputBorder.none,
+                  filled: false,
                   prefixIcon: Icon(Icons.search_rounded, size: 18, color: ac.inkFaint),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -163,6 +165,18 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
                 id: s.generateId(), date: DateTime.now(), customerId: customer.id, amountCollected: amt));
             ref.invalidate(accountingSummaryProvider);
             if (ctx.mounted) Navigator.pop(ctx);
+            if (context.mounted) {
+              SaveSuccessSheet.show(
+                context: context,
+                title: 'Payment Collected',
+                subtitle: '${customer.name} \u00b7 Rs ${NumberFormat('#,##0').format(amt.toInt())}',
+                items: [SheetLineItem(label: customer.name, value: 'Rs ${NumberFormat('#,##0').format(amt.toInt())}')],
+                paid: amt,
+                total: amt,
+                newLabel: '+ Collect Again',
+                onNew: () {},
+              );
+            }
           }, child: const Text('Record Payment')),
         ],
       ),
@@ -271,9 +285,10 @@ class _CustomerCard extends StatelessWidget {
                   minimumSize: const Size(double.infinity, 42),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: onCollect,
-                icon: const Icon(Icons.payments_rounded, size: 16),
-                label: const Text('Collect Payment', style: TextStyle(fontWeight: FontWeight.w700)),
+                onPressed: outstanding <= 0 ? null : onCollect,
+                icon: Icon(outstanding <= 0 ? Icons.check_circle_rounded : Icons.payments_rounded, size: 16),
+                label: Text(outstanding <= 0 ? 'Khata Cleared' : 'Collect Payment',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
           ]),
