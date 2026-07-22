@@ -25,8 +25,9 @@ class SupplierKhataScreen extends ConsumerWidget {
           data: (spPay) {
             return suppliers.map((s) {
               final sp = purchases.where((p) => p.supplierId == s.id).fold(0.0, (sum, p) => sum + p.costAmount);
+              final paid = purchases.where((p) => p.supplierId == s.id).fold(0.0, (sum, p) => sum + p.paid);
               final pa = spPay.where((p) => p.supplierId == s.id).fold(0.0, (sum, p) => sum + p.amountPaid);
-              return _SupBal(supplier: s, balance: sp - pa);
+              return _SupBal(supplier: s, balance: sp - paid - pa);
             }).toList();
           }, loading: () => null, error: (_, __) => null,
         ), loading: () => null, error: (_, __) => null,
@@ -62,7 +63,7 @@ class SupplierKhataScreen extends ConsumerWidget {
                     child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
                       CircleAvatar(radius: 22,
                         backgroundColor: item.balance > 0 ? ac.purchaseTint : ac.profitTint,
-                        child: Text(item.supplier.name[0].toUpperCase(),
+                        child: Text((item.supplier.name.isNotEmpty ? item.supplier.name[0] : '?').toUpperCase(),
                             style: TextStyle(fontWeight: FontWeight.w700,
                                 color: item.balance > 0 ? ac.purchaseFg : ac.profitFg))),
                       const SizedBox(width: 14),
@@ -132,8 +133,9 @@ class _SupDetail extends ConsumerWidget {
             final sp = purchases.where((p) => p.supplierId == supplier.id);
             final pa = spPay.where((p) => p.supplierId == supplier.id);
             final totalP = sp.fold(0.0, (s, x) => s + x.costAmount);
+            final paidAtPurchase = sp.fold(0.0, (s, x) => s + x.paid);
             final totalPaid = pa.fold(0.0, (s, x) => s + x.amountPaid);
-            final balance = totalP - totalPaid;
+            final balance = totalP - paidAtPurchase - totalPaid;
 
             final txns = <_SupTxn>[
               ...sp.map((p) => _SupTxn(date: p.date, desc: 'Purchase — Rs.${p.costAmount.toStringAsFixed(0)}', isPurchase: true, amount: p.costAmount)),

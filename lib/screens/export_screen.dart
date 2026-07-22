@@ -8,7 +8,11 @@ import '../services/accounting_service.dart';
 import '../providers/sale_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/product_provider.dart';
+import '../providers/purchase_provider.dart';
+import '../providers/payment_provider.dart';
+import '../providers/supplier_payment_provider.dart';
 import '../providers/export_provider.dart';
+import '../providers/dashboard_provider.dart';
 import 'package:file_saver/file_saver.dart';
 import '../theme/app_theme.dart';
 
@@ -95,15 +99,20 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
           !s.isVoided && !s.isQuote &&
           !s.date.isBefore(range.start) && !s.date.isAfter(range.end)).toList();
 
+      final purchases = ref.read(purchasesStreamProvider).asData?.value ?? [];
+      final payments = ref.read(paymentsStreamProvider).asData?.value ?? [];
+      final supplierPayments = ref.read(supplierPaymentsStreamProvider).asData?.value ?? [];
+      final openingBal = ref.read(openingBalanceStreamProvider).asData?.value;
+
       final service = ref.read(exportServiceProvider);
       final summary = AccountingService().recomputeForPeriod(
         sales: sales,
-        purchases: [],
+        purchases: purchases,
         expenses: expenses,
-        payments: [],
-        supplierPayments: [],
+        payments: payments,
+        supplierPayments: supplierPayments,
         products: products,
-        openingBal: null,
+        openingBal: openingBal,
         startDate: range.start,
         endDate: range.end,
       );

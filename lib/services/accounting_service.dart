@@ -156,9 +156,11 @@ class AccountingService {
             supplierPayments.where((sp) => sp.supplierId == sid);
         final total =
             sPurchases.fold(0.0, (s, p) => s + sanitize(p.costAmount));
-        final paid =
+        final paidAtPurchase =
+            sPurchases.fold(0.0, (s, p) => s + sanitize(p.paid));
+        final paidToSupplier =
             sPayments.fold(0.0, (s, sp) => s + sanitize(sp.amountPaid));
-        final bal = sanitize(total) - sanitize(paid);
+        final bal = sanitize(total) - sanitize(paidAtPurchase) - sanitize(paidToSupplier);
         if (bal > 0) totalSupplierBaqaya += bal;
       }
     }

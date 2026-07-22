@@ -164,7 +164,7 @@ class FirestoreService {
         final snap = await transaction.get(productRef);
         if (!snap.exists) throw Exception('Product ${entry.key} not found');
         final data = snap.data() as Map<String, dynamic>;
-        final currentStock = (data['current_stock'] as num).toDouble();
+        final currentStock = (data['current_stock'] as num?)?.toDouble() ?? 0;
         if (currentStock < entry.value) {
           throw Exception('Insufficient stock for product ${entry.key}');
         }
@@ -186,10 +186,11 @@ class FirestoreService {
       final snap = await transaction.get(productRef);
       if (!snap.exists) throw Exception('Product not found');
       final data = snap.data() as Map<String, dynamic>;
-      final currentStock = (data['current_stock'] as num).toDouble();
+      final currentStock = (data['current_stock'] as num?)?.toDouble() ?? 0;
       final costPrice = (data['cost_price'] as num?)?.toDouble() ?? 0;
 
       final totalStock = currentStock + restockQty;
+      if (totalStock <= 0) return;
       final weightedCost = ((currentStock * costPrice) + (restockQty * unitCost)) / totalStock;
 
       transaction.update(productRef, {
@@ -220,20 +221,21 @@ class FirestoreService {
       final saleSnap = await transaction.get(saleRef);
       if (!saleSnap.exists) throw Exception('Sale not found');
 
+      final data = saleSnap.data() as Map<String, dynamic>;
+      final sale = Sale.fromMap(data);
+      if (sale.isVoided) return;
+
       transaction.update(saleRef, {
         'is_voided': true,
         'void_reason': reason,
       });
-
-      final data = saleSnap.data() as Map<String, dynamic>;
-      final sale = Sale.fromMap(data);
 
       for (final li in sale.lineItems) {
         final productRef = _products.doc(li.productId);
         final snap = await transaction.get(productRef);
         if (snap.exists) {
           final productData = snap.data() as Map<String, dynamic>;
-          final currentStock = (productData['current_stock'] as num).toDouble();
+          final currentStock = (productData['current_stock'] as num?)?.toDouble() ?? 0;
           transaction.update(productRef, {'current_stock': currentStock + li.qtyOrArea});
         }
       }
