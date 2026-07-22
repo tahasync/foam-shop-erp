@@ -7,6 +7,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
+// Load keystore properties from key.properties (CI or local release builds)
+val keystorePropsFile = rootProject.file("key.properties")
+val useReleaseSigning = keystorePropsFile.exists()
+if (useReleaseSigning) {
+    println("Using release signing config from key.properties")
+} else {
+    println("WARNING: key.properties not found — release builds will use debug signing. Google Sign-In will fail on CI builds.")
+}
+
 android {
     namespace = "com.example.replaced"
     compileSdk = flutter.compileSdkVersion
@@ -18,19 +30,33 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.replaced"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (useReleaseSigning) {
+            create("release") {
+                val props = Properties()
+                props.load(FileInputStream(keystorePropsFile))
+                storeFile = rootProject.file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            if (useReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
