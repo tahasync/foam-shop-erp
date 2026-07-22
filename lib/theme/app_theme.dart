@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors extends ThemeExtension<AppColors> {
@@ -231,7 +232,7 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(color: cs.outlineVariant, thickness: 1, space: 0),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: cs.surfaceContainerLowest,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         selectedItemColor: cs.primary,
         unselectedItemColor: cs.onSurfaceVariant,
@@ -248,6 +249,14 @@ class AppTheme {
           ),
         ),
         textStyle: TextStyle(color: cs.onSurface, fontSize: 14, fontWeight: FontWeight.w500),
+      ),
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(
+            allowEnterRouteSnapshotting: false,
+          ),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
       ),
     );
   }

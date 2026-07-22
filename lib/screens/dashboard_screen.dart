@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../providers/sale_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/stitched_divider.dart';
@@ -21,6 +22,9 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final as = ref.watch(accountingSummaryProvider);
+    final salesAsync = ref.watch(salesStreamProvider);
+    final salesCount = salesAsync.asData?.value.length ?? 0;
+    final slipNumber = (salesCount + 1).toString().padLeft(4, '0');
     final bottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
@@ -28,6 +32,8 @@ class DashboardScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (d) => SafeArea(
+          top: true,
+          bottom: false,
           child: ListView(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + bottom),
             children: [
@@ -44,13 +50,13 @@ class DashboardScreen extends ConsumerWidget {
                   SlipStat(label: 'Baqaya', value: 'Rs ${NumberFormat('#,##0').format(d.totalCustomerBaqaya.toInt())}'),
                 ],
                 stubLeft: 'Register slip · today',
-                stubRight: '#0001',
+                stubRight: '#$slipNumber',
               ),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               _StatGrid(d: d),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               if (d.lowStockCount > 0)
-                _LowStockAlert(d: d),
+                _LowStockAlert(d: d, onTap: onLowStockTap),
             ],
           ),
         ),
@@ -209,26 +215,30 @@ class _StatCard extends StatelessWidget {
 
 class _LowStockAlert extends StatelessWidget {
   final dynamic d;
-  const _LowStockAlert({required this.d});
+  final VoidCallback? onTap;
+  const _LowStockAlert({required this.d, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ac.purchaseTint,
-        borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: ac.purchaseTint,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(children: [
+          Container(width: 32, height: 32,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(10)),
+              child: Icon(Icons.warning_amber_rounded, size: 17, color: ac.purchaseFg)),
+          const SizedBox(width: 11),
+          Expanded(child: Text('${d.lowStockCount} ${d.lowStockCount == 1 ? 'item' : 'items'} low on stock',
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: ac.purchaseFg))),
+          Icon(Icons.chevron_right_rounded, size: 18, color: ac.inkFaint),
+        ]),
       ),
-      child: Row(children: [
-        Container(width: 32, height: 32,
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.warning_amber_rounded, size: 17, color: ac.purchaseFg)),
-        const SizedBox(width: 11),
-        Expanded(child: Text('${d.lowStockCount} ${d.lowStockCount == 1 ? 'item' : 'items'} low on stock',
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: ac.purchaseFg))),
-        Icon(Icons.chevron_right_rounded, size: 18, color: ac.inkFaint),
-      ]),
     );
   }
 }

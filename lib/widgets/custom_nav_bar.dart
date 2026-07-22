@@ -31,39 +31,55 @@ class CustomNavBar extends StatelessWidget {
   Widget _navItem(BuildContext context, int index, IconData icon, String label, bool showDot) {
     final active = index == currentIndex;
     final cs = Theme.of(context).colorScheme;
-    final ac = AppColors.of(context);
+    final isDark = cs.brightness == Brightness.dark;
+    final activeIconBg = isDark ? const Color(0x2600897B) : const Color(0xFFE0F2F1);
+    final activeColor = AppTheme.teal;
+    final inactiveColor = cs.onSurfaceVariant;
+
     return GestureDetector(
       onTap: () => onTap(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: active ? ac.saleTint : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(icon, size: 18, color: active ? AppTheme.teal : cs.onSurfaceVariant),
-                if (showDot)
-                  Positioned(
-                    top: -2,
-                    right: -4,
-                    child: Container(
-                      width: 6, height: 6,
-                      decoration: BoxDecoration(
-                        color: AppTheme.amber,
-                        shape: BoxShape.circle,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.fastOutSlowIn,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: active ? activeIconBg : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, size: 20, color: active ? activeColor : inactiveColor),
+                  if (showDot)
+                    Positioned(
+                      top: -2,
+                      right: -3,
+                      child: Container(
+                        width: 6, height: 6,
+                        decoration: BoxDecoration(
+                          color: AppTheme.amber,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-            const SizedBox(height: 3),
-            Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700,
-                color: active ? AppTheme.teal : cs.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: active ? activeColor : inactiveColor,
+              ),
+            ),
           ],
         ),
       ),

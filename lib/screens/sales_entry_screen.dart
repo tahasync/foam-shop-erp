@@ -138,6 +138,7 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   final _searchCtrl = TextEditingController();
   final _searchFocus = FocusNode();
   bool _searchFocused = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -261,6 +262,9 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
   }
 
   Future<void> _save({required bool isQuote}) async {
+    if (_saving) return;
+    _saving = true;
+    try {
     final state = ref.read(salesProvider);
     if (state.cart.isEmpty) return;
 
@@ -336,6 +340,9 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
         onNew: () {},
         newLabel: '+ New Sale',
       );
+    }
+    } finally {
+      _saving = false;
     }
   }
 

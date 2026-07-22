@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/product.dart';
 import '../models/supplier.dart';
 import '../providers/product_provider.dart';
@@ -9,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/debounce.dart';
+import '../widgets/scale_button.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool initialLowStockFilter;
@@ -126,32 +128,47 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: GestureDetector(
                     onTap: () => setState(() => _typeFilter = t),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _typeFilter == t ? AppTheme.teal : cs.surfaceContainerLowest,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: _typeFilter == t ? AppTheme.teal : cs.outlineVariant),
+                    child: Column(children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeInOut,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _typeFilter == t ? AppTheme.teal : cs.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: _typeFilter == t ? AppTheme.teal : cs.outlineVariant),
+                        ),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeInOut,
+                          style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700,
+                            color: _typeFilter == t ? Colors.white : cs.onSurfaceVariant,
+                          ),
+                          child: Text(t),
+                        ),
                       ),
-                      child: Text(t, style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.w700,
-                        color: _typeFilter == t ? Colors.white : cs.onSurfaceVariant,
-                      )),
-                    ),
+                    ]),
                   ),
                 )).toList(),
               ),
             ),
             const SizedBox(height: 6),
             Expanded(
-              child: filtered.isEmpty
-                  ? Center(child: Text('No matching products', style: TextStyle(color: cs.onSurfaceVariant)))
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) => _ProdCard(
-                        product: filtered[i],
-                        onTap: () => _showOptions(filtered[i]),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: filtered.isEmpty
+                    ? Center(child: Text('No matching products', style: TextStyle(color: cs.onSurfaceVariant)))
+                    : ListView.builder(
+                        key: ValueKey(_typeFilter),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) => _ProdCard(
+                          product: filtered[i],
+                          onTap: () => _showOptions(filtered[i]),
+                        ).animate().fadeIn(duration: 250.ms, delay: (i * 50).ms).slideY(begin: 0.15, duration: 250.ms, delay: (i * 50).ms),
                       ),
                     ),
             ),
@@ -596,7 +613,7 @@ class _ProdCard extends StatelessWidget {
     final unitPrice = fmt.format(product.costPrice.toInt());
     final totalValue = product.currentStock * product.costPrice;
     final totalFmt = fmt.format(totalValue.toInt());
-    return GestureDetector(
+    return ScaleButton(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(13),

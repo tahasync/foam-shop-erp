@@ -51,7 +51,7 @@ String _periodLabel(ExportPeriod p) {
   }
 }
 
-String _fmt(double v) => 'Rs ${v.toStringAsFixed(0)}';
+String _fmt(double v) => 'Rs ${NumberFormat('#,##0').format(v)}';
 
 class ExportScreen extends ConsumerStatefulWidget {
   const ExportScreen({super.key});
@@ -217,11 +217,12 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<ExportPeriod>(
+                  showSelectedIcon: false,
                   segments: const [
-                    ButtonSegment(value: ExportPeriod.daily, label: Text('Daily')),
-                    ButtonSegment(value: ExportPeriod.weekly, label: Text('Weekly')),
-                    ButtonSegment(value: ExportPeriod.monthly, label: Text('Monthly')),
-                    ButtonSegment(value: ExportPeriod.custom, label: Text('Custom')),
+                    ButtonSegment(value: ExportPeriod.daily, label: Text('Daily', maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis)),
+                    ButtonSegment(value: ExportPeriod.weekly, label: Text('Weekly', maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis)),
+                    ButtonSegment(value: ExportPeriod.monthly, label: Text('Monthly', maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis)),
+                    ButtonSegment(value: ExportPeriod.custom, label: Text('Custom', maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis)),
                   ],
                   selected: {_period},
                   onSelectionChanged: (v) {
@@ -235,6 +236,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                   },
                   style: SegmentedButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                   ),
                 ),
               ),
