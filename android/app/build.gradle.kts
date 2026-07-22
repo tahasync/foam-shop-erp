@@ -7,18 +7,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-import java.util.Properties
-import java.io.FileInputStream
-
-// Load keystore properties from key.properties (CI or local release builds)
-val keystorePropsFile = rootProject.file("key.properties")
-val useReleaseSigning = keystorePropsFile.exists()
-if (useReleaseSigning) {
-    println("Using release signing config from key.properties")
-} else {
-    println("WARNING: key.properties not found — release builds will use debug signing. Google Sign-In will fail on CI builds.")
-}
-
 android {
     namespace = "com.example.replaced"
     compileSdk = flutter.compileSdkVersion
@@ -38,25 +26,24 @@ android {
     }
 
     signingConfigs {
-        if (useReleaseSigning) {
-            create("release") {
-                val props = Properties()
-                props.load(FileInputStream(keystorePropsFile))
-                storeFile = rootProject.file(props.getProperty("storeFile"))
-                storePassword = props.getProperty("storePassword")
-                keyAlias = props.getProperty("keyAlias")
-                keyPassword = props.getProperty("keyPassword")
+        create("release") {
+            val ksPath = System.getenv("KEYSTORE_PATH") ?: rootProject.findProperty("KEYSTORE_PATH")?.toString()
+            if (ksPath != null) {
+                storeFile = rootProject.file(ksPath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: rootProject.findProperty("KEYSTORE_PASSWORD")?.toString() ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: rootProject.findProperty("KEY_ALIAS")?.toString() ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: rootProject.findProperty("KEY_PASSWORD")?.toString() ?: ""
+                println("Using release signing config")
+            } else {
+                println("WARNING: KEYSTORE_PATH not set — release builds will use debug signing")
             }
         }
     }
 
     buildTypes {
         release {
-            if (useReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
-            } else {
-                signingConfig = signingConfigs.getByName("debug")
-            }
+            val hasKs = System.getenv("KEYSTORE_PATH") != null || rootProject.findProperty("KEYSTORE_PATH") != null
+            signingConfig = if (hasKs) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
