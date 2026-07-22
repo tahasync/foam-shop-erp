@@ -28,12 +28,12 @@ android {
     signingConfigs {
         create("release") {
             val ksPath = System.getenv("KEYSTORE_PATH") ?: rootProject.findProperty("KEYSTORE_PATH")?.toString()
-            if (ksPath != null) {
-                storeFile = rootProject.file(ksPath)
+            if (!ksPath.isNullOrEmpty()) {
+                storeFile = file(ksPath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: rootProject.findProperty("KEYSTORE_PASSWORD")?.toString() ?: ""
                 keyAlias = System.getenv("KEY_ALIAS") ?: rootProject.findProperty("KEY_ALIAS")?.toString() ?: ""
                 keyPassword = System.getenv("KEY_PASSWORD") ?: rootProject.findProperty("KEY_PASSWORD")?.toString() ?: ""
-                println("Using release signing config")
+                println("Using release signing config: $ksPath")
             } else {
                 println("WARNING: KEYSTORE_PATH not set — release builds will use debug signing")
             }
@@ -42,7 +42,7 @@ android {
 
     buildTypes {
         release {
-            val hasKs = System.getenv("KEYSTORE_PATH") != null || rootProject.findProperty("KEYSTORE_PATH") != null
+            val hasKs = !System.getenv("KEYSTORE_PATH").isNullOrEmpty() || rootProject.findProperty("KEYSTORE_PATH") != null
             signingConfig = if (hasKs) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
