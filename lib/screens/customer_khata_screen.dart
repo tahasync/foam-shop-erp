@@ -32,7 +32,7 @@ class CustomerKhataScreen extends ConsumerWidget {
             final total = cSales.fold(0.0, (s, x) => s + x.amount);
             final paid = cSales.fold(0.0, (s, x) => s + x.paid);
             final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
-            return _CustBal(customer: c, balance: total - paid - recv);
+            return _CustBal(customer: c, balance: (total - paid - recv).clamp(0, double.infinity));
           }).toList(),
           loading: () => null, error: (_, __) => null,
         ),
@@ -55,7 +55,7 @@ class CustomerKhataScreen extends ConsumerWidget {
               Text('No customers yet', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurface)),
             ]))
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 100 + MediaQuery.of(context).padding.bottom),
               itemCount: combined.length,
               itemBuilder: (_, i) {
                 final item = combined[i];
@@ -134,18 +134,25 @@ class _CustDetail extends ConsumerWidget {
             final total = cSales.fold(0.0, (s, x) => s + x.amount);
             final paid = cSales.fold(0.0, (s, x) => s + x.paid);
             final recv = cPayments.fold(0.0, (s, x) => s + x.amountCollected);
-            final balance = total - paid - recv;
+            final balance = (total - paid - recv).clamp(0, double.infinity);
 
             final txns = <_Txn>[
-              ...cSales.map((s) => _Txn(date: s.date, desc: 'Sale — Diamond Foam', isSale: true, amount: s.amount)),
+              ...cSales.map((s) {
+                final items = s.lineItems.map((li) => li.name ?? li.productId).where((n) => n.isNotEmpty).toList();
+                final desc = items.isEmpty ? 'Sale #${s.id.substring(0, 6)}'
+                    : items.length == 1 ? 'Sale — ${items.first}'
+                    : 'Sale — ${items.first} (+${items.length - 1} items)';
+                return _Txn(date: s.date, desc: desc, isSale: true, amount: s.amount);
+              }),
               ...cPayments.map((p) => _Txn(date: p.date, desc: 'Payment Collected', isSale: false, amount: p.amountCollected)),
             ];
             txns.sort((a, b) => b.date.compareTo(a.date));
 
             final saleCount = cSales.length;
 
+            final bottomPad = MediaQuery.of(context).padding.bottom;
             return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 100 + bottomPad),
               children: [
                 Row(children: [
                   Container(width: 38, height: 38,
@@ -179,7 +186,7 @@ class _CustDetail extends ConsumerWidget {
                         elevation: 0,
                         shadowColor: AppTheme.teal.withValues(alpha: 0.32),
                       ),
-                      onPressed: balance <= 0 ? null : () => _collectPayment(context, ref, customer),
+                      onPressed: balance <= 0 ? null : () => _collectPayment(context, ref, customer, currentBalance: balance.toDouble()),
                       icon: Icon(balance <= 0 ? Icons.check_circle_rounded : Icons.credit_card_rounded, size: 16),
                       label: Text(balance <= 0 ? 'Khata Cleared' : 'Collect Payment',
                           style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
@@ -238,16 +245,38 @@ class _CustDetail extends ConsumerWidget {
   }
 }
 
-void _collectPayment(BuildContext context, WidgetRef ref, Customer customer) {
-  final ctrl = TextEditingController();
+void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {double currentBalance = 0}) {
+  final ctrl = TextEditingController(text: currentBalance > 0 ? currentBalance.toStringAsFixed(0) : '');
+  final formKey = GlobalKey<FormState>();
     showDialog(context: context, builder: (ctx) => AlertDialog(
     title: const Text('Collect Payment'),
-    content: SingleChildScrollView(child: TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true), keyboardType: TextInputType.number)),
+    content: SingleChildScrollView(child: Form(
+      key: formKey,
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (currentBalance > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text('Outstanding: Rs. ${currentBalance.toStringAsFixed(0)}',
+                style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface)),
+          ),
+        TextFormField(
+          controller: ctrl,
+          decoration: const InputDecoration(labelText: 'Amount (PKR)', filled: true),
+          keyboardType: TextInputType.number,
+          validator: (v) {
+            final amt = double.tryParse(v ?? '') ?? 0;
+            if (amt <= 0) return 'Enter a positive amount';
+            if (amt > currentBalance) return 'Cannot exceed Rs. ${currentBalance.toStringAsFixed(0)}';
+            return null;
+          },
+        ),
+      ]),
+    )),
     actions: [
       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
       FilledButton(onPressed: () {
+        if (!formKey.currentState!.validate()) return;
         final amt = double.tryParse(ctrl.text) ?? 0;
-        if (amt <= 0) return;
         final s = ref.read(firestoreServiceProvider);
         final payment = Payment(id: s.generateId(), date: DateTime.now(), customerId: customer.id, amountCollected: amt);
         Navigator.of(ctx).pop();
