@@ -1,49 +1,40 @@
-# 📋 Foam Shop ERP — Digital Register
+# Foam Shop — Digital Register (POS + Khata)
 
-A modern Flutter-based ERP for **Asif Foam Center** — real-time inventory management, POS checkout, customer/supplier Khata (ledgers), purchases, expenses, and financial reporting.
+A Flutter POS/register app for **Asif Foam Center** with real-time Firestore-based inventory, sales, customer/supplier ledgers (Khata), expense tracking, PDF/XLSX/CSV exports, and printed receipts.
 
----
+## What it does
 
-## ✨ Features
+Single-user (per Firebase Auth account) Flutter app that manages a foam shop's daily operations: inventory with Weighted Average Cost (WAC) costing and low-stock alerts; sales entry with multi-item cart, partial payments, discounts, and delivery charges; customer ledger with per-item transaction history and over-collection protection; supplier purchase tracking; expense recording; a real-time dashboard showing revenue, COGS, net profit, and cash; and export to styled XLSX, CSV, and branded PDF receipts with printing.
 
-| Module | Capabilities |
-|:-------|:-------------|
-| **📊 Dashboard** | Real-time Revenue, COGS, Net Profit, Cash in Hand, auto-incrementing register slip |
-| **📦 Inventory** | Search, filter (All/Low Stock), restock with WAC costing, low-stock alerts |
-| **💳 Sales Entry** | Product search with live highlights, recent-item chips, multi-item cart, partial payments, save-success modal |
-| **👤 Customer Khata** | Per-customer ledger with item-level transaction history, over-collection protection, torn-receipt balance card |
-| **🏢 Supplier Khata** | Purchase ledger with payment tracking, balance calculation |
-| **📄 Reports** | CSV, styled XLSX (teal header + frozen rows), branded PDF export |
-| **🖨 Receipt PDF** | Branded receipt with itemized table, totals card, paid/due status badge |
-| **🔔 Update Checker** | In-app version check against GitHub releases |
+**Data is live-synced to Firebase Cloud Firestore** (not local-only). Each Firebase Auth user sees only their own data (partitioned by `uid`). This is not a collaborative multi-user system.
 
----
+## Tech stack
 
-## 🎨 Premium UI
+- **Framework:** Flutter (Dart) + Riverpod (state management)
+- **Backend:** Firebase Auth, Cloud Firestore, Firebase Crashlytics + Performance
+- **Auth:** Email/password + Google Sign-In
+- **Exports:** `pdf` + `printing`, `excel`, `csv`
+- **UI:** `flutter_animate`, `shimmer`, `fl_chart`, `flutter_svg`
+- **CI/CD:** GitHub Actions (Android APK on `v*` tags)
 
-- Floating pill navigation bar with amber dot indicators
-- Scale-feedback buttons with haptic touch
-- Staggered list animations with `flutter_animate`
-- Smooth route transitions (`ZoomPageTransitionsBuilder` / `CupertinoPageTransitionsBuilder`)
-- Full light + dark theme support
+## Features
 
----
+- **Dashboard** — real-time revenue, COGS, net profit, cash in hand, register slip counter
+- **Inventory** — search, filter, restock with WAC costing, low-stock alerts
+- **Sales entry** — product search with highlights, multi-item cart, partial payments, discounts, delivery/cutting charges
+- **Customer Khata** — per-customer item-level ledger, over-collection protection, balance card
+- **Supplier Khata** — purchase ledger with payment tracking
+- **Expenses** — track shop expenses with categories
+- **Exports** — CSV, styled XLSX (teal header + frozen rows), branded PDF with receipt printing
+- **Theming** — full light + dark mode, floating pill nav, staggered animations
 
-## 🛠 Tech Stack
+## Platform support
 
-| Layer | Technology |
-|:------|:-----------|
-| Framework | Flutter (Dart) |
-| State Management | Riverpod |
-| Backend | Firebase Auth, Cloud Firestore |
-| PDF | `pdf` + `printing` |
-| Excel | `excel` |
-| Animations | `flutter_animate` |
-| CI/CD | GitHub Actions (auto-build + release on `v*` tags) |
+- **Android** — fully supported, CI builds release APKs
+- **iOS** — Xcode project + Podfile exist, but CI does not build for iOS
+- **Web / macOS / Windows / Linux** — Firebase throws `UnsupportedError`; these are scaffolding only
 
----
-
-## 🚀 Getting Started
+## Setup
 
 ```bash
 git clone https://github.com/tahasync/foam-shop-erp.git
@@ -51,50 +42,31 @@ cd foam-shop-erp
 flutter pub get
 
 # Firebase setup (see SETUP.md)
-cp env/firebase_config.example.json env/firebase_config.json
-# Edit env/firebase_config.json with your Firebase project keys
+# Create your own Firebase project, download google-services.json to android/app/
+# Create env/firebase_config.json with your dart-define keys:
+#   FIREBASE_ANDROID_API_KEY, FIREBASE_ANDROID_APP_ID, etc.
+# See env/.gitkeep for the required key names
 
 flutter run --dart-define-from-file=env/firebase_config.json
 ```
 
-### Build Release
+### Build release
 
 ```bash
 flutter build apk --release --dart-define-from-file=env/firebase_config.json
 ```
 
----
-
-## 📁 Project Structure
-
-```
-lib/
-├── models/        # Data models
-├── providers/     # Riverpod providers
-├── screens/       # UI screens
-├── services/      # Firebase, accounting, export, PDF
-├── widgets/       # Reusable widgets
-├── theme/         # AppTheme, AppColors
-└── utils/         # Utilities
-design/            # UI mockup references
-env/               # Firebase config (gitignored)
-```
-
----
-
-## 📦 Release
-
-Tag a version to trigger automated CI build:
+### Trigger CI build
 
 ```bash
 git tag v1.5.0
 git push origin v1.5.0
 ```
 
-GitHub Actions builds and attaches APKs (split + universal) to the Release.
+## Security notice
 
----
+The file `env/firebase_config.json` previously contained live Firebase API keys committed to git. This has been moved to `.gitignore`. If you forked or cloned before this fix, rotate your Firebase API keys immediately and remove the file from any public repos.
 
-## 👤 Author
+## Status
 
-**Muhammad Taha Naeem** — [@tahasync](https://github.com/tahasync)
+**Production-grade Android app — actively maintained.** Used at Asif Foam Center. No automated tests exist (risky for a financial POS). Some platform folders (web/macOS/Windows/Linux) are non-functional scaffolding. iOS is configured but not built in CI.
