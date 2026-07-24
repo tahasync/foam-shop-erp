@@ -38,9 +38,9 @@ jobs:
       - name: Write Firebase dart-define config
         run: |
           mkdir -p env
-          printf '%s\n' '${{ secrets.FIREBASE_CONFIG_JSON }}' > env/firebase_config.json
-          echo "::notice ::firebase_config.json fields:"
-          grep -o '"[A-Z_]*"' env/firebase_config.json | head -20
+          printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON_BASE64 }}' | base64 --decode > env/firebase_config.json
+          file env/firebase_config.json
+          wc -c < env/firebase_config.json
 
       - name: Decode Release Keystore
         run: |
