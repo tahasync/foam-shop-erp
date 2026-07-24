@@ -18,14 +18,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _tab = 0;
-  bool _checkedUpdate = false;
   bool _invLowStockFilter = false;
   String? _invHighlightId;
 
   @override
   void initState() {
     super.initState();
-    _checkUpdate();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkUpdate());
   }
 
   void _goToInventory() {
@@ -42,8 +41,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _checkUpdate() async {
-    if (_checkedUpdate) return;
-    _checkedUpdate = true;
     try {
       final pkg = await PackageInfo.fromPlatform();
       final installed = pkg.version;
@@ -61,19 +58,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final lowStockCount = as.asData?.value.lowStockCount ?? 0;
     final khataCount = ref.watch(accountingSummaryProvider).asData?.value.totalCustomerBaqaya ?? 0;
 
-    final screens = <Widget>[
-      DashboardScreen(onLowStockTap: _goToInventory),
-      const SalesEntryScreen(),
-      InventoryScreen(
-        initialLowStockFilter: _invLowStockFilter,
-        highlightProductId: _invHighlightId,
-      ),
-      const CustomerKhataScreen(),
-    ];
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       extendBody: true,
-      body: screens[_tab],
+      body: IndexedStack(
+        index: _tab,
+        children: const [
+          DashboardScreen(),
+          SalesEntryScreen(),
+          InventoryScreen(),
+          CustomerKhataScreen(),
+        ],
+      ),
       bottomNavigationBar: Container(
         color: Colors.transparent,
         child: SafeArea(
@@ -83,7 +80,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Container(
               height: 64,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
+                color: cs.surface,
                 borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 26, offset: const Offset(0, 10)),

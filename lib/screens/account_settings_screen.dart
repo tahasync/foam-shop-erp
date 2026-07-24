@@ -130,10 +130,10 @@ class AccountSettingsScreen extends ConsumerWidget {
             await s.setOpeningBalance(OpeningBalance(
                 id: current?.id ?? s.generateId(), date: DateTime.now(), capitalAmount: a));
             if (ctx.mounted) Navigator.pop(ctx);
-          } catch (e) {
+          } catch (e, st) {
             if (ctx.mounted) {
               final safeMsg = sanitizeErrorMessage(e, fallback: 'Could not save opening balance.');
-              logSecureError(e, stack, tag: 'opening_balance');
+              logSecureError(e, st, tag: 'opening_balance');
               ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(safeMsg), backgroundColor: Theme.of(ctx).colorScheme.error));
             }
           }

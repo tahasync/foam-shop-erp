@@ -20,7 +20,6 @@ void main() {
 
     ErrorWidget.builder = (details) {
       debugPrint('[FATAL] Widget error: ${details.exception}');
-      debugPrint('[FATAL] Stack: ${details.stack}');
       final theme = AppTheme.light();
       return Material(
         color: theme.colorScheme.surface,
@@ -33,8 +32,6 @@ void main() {
                 Icon(Icons.error_outline_rounded, size: 48, color: theme.colorScheme.error),
                 const SizedBox(height: 12),
                 Text('Something went wrong', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text(details.exceptionAsString(), style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
               ],
             ),
           ),
@@ -49,24 +46,33 @@ void main() {
       FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true,
       );
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
-      await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
-      ui.PlatformDispatcher.instance.onError = (error, stack) {
-        FirebaseCrashlytics.instance.recordError(error, stack);
-        return true;
-      };
-      final authService = AuthService();
-      await authService.initialize();
     } catch (e) {
       runApp(ProviderScope(child: _FatalError(message: 'Failed to initialize: $e')));
       return;
     }
 
+    unawaited(_initBackgroundServices());
+
+    final authService = AuthService();
+    await authService.initialize();
+
     runApp(const ProviderScope(child: FoamShopApp()));
   }, (Object error, StackTrace stack) {
-    runApp(ProviderScope(child: _FatalError(message: 'Unexpected error: $error')));
+    runApp(ProviderScope(child: _FatalError(message: 'Unexpected error occurred')));
   });
+}
+
+Future<void> _initBackgroundServices() async {
+  try {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
+    ui.PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack);
+      return true;
+    };
+    await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+  } catch (_) {
+  }
 }
 
 class _FatalError extends StatelessWidget {
@@ -146,11 +152,9 @@ class AuthGate extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.cloud_off_rounded, size: 64, color: Theme.of(context).colorScheme.error),
+              const Icon(Icons.cloud_off_rounded, size: 64),
               const SizedBox(height: 16),
-              Text('Could not sign in', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Text('$e', style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+              const Text('Could not sign in', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: () => ref.invalidate(authStateProvider),

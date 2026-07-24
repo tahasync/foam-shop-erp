@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../models/sale.dart' show Sale;
+import '../models/product.dart' show Product;
+import '../models/expense.dart' show Expense;
+import '../models/payment.dart' show Payment;
+import '../models/supplier_payment.dart' show SupplierPayment;
+import '../models/opening_balance.dart' show OpeningBalance;
+import '../services/accounting_service.dart' show AccountingSummary;
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/sale_provider.dart';
@@ -19,6 +26,8 @@ class DashboardScreen extends ConsumerWidget {
   final VoidCallback? onLowStockTap;
   const DashboardScreen({super.key, this.onLowStockTap});
 
+  static final _dateFormat = DateFormat('EEEE, d MMMM yyyy');
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final as = ref.watch(accountingSummaryProvider);
@@ -30,14 +39,14 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       body: as.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (_, __) => const Center(child: Text('Could not load dashboard')),
         data: (d) => SafeArea(
           top: true,
           bottom: false,
           child: ListView(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + bottom),
             children: [
-              _GreetHeader(),
+              _GreetHeader(slipNumber: slipNumber),
               const SizedBox(height: 16),
               TornReceiptCard(
                 label: 'Cash in Hand',
@@ -53,10 +62,10 @@ class DashboardScreen extends ConsumerWidget {
                 stubRight: '#$slipNumber',
               ),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
-              _StatGrid(d: d),
+              _StatGrid(summary: d),
               const StitchedDivider(margin: EdgeInsets.symmetric(vertical: 14)),
               if (d.lowStockCount > 0)
-                _LowStockAlert(d: d, onTap: onLowStockTap),
+                _LowStockAlert(count: d.lowStockCount, onTap: onLowStockTap),
             ],
           ),
         ),
@@ -66,14 +75,22 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _GreetHeader extends ConsumerWidget {
+  final String slipNumber;
+  const _GreetHeader({required this.slipNumber});
+
+  static final _dateStr = _GreetHeader._formatDate();
+
+  static String _formatDate() {
+    final now = DateTime.now();
+    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]} ${now.year}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final ac = AppColors.of(context);
-    final now = DateTime.now();
-    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    final dateStr = '${days[now.weekday % 7]}, ${now.day} ${months[now.month - 1]} ${now.year}';
     final authState = ref.watch(authStateProvider);
     final authService = ref.watch(authServiceProvider);
     final user = authState.asData?.value;
@@ -84,7 +101,7 @@ class _GreetHeader extends ConsumerWidget {
               fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: -0.01, color: cs.onSurface)),
           const SizedBox(height: 2),
           Row(children: [
-            Text(dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
+            Text(_dateStr, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -107,16 +124,16 @@ class _GreetHeader extends ConsumerWidget {
           backgroundImage: user != null && user.photoURL != null ? NetworkImage(user.photoURL!) : null,
           child: user?.photoURL == null ? const Icon(Icons.person_rounded, size: 18) : null,
         ),
-        itemBuilder: (_) => [
-          const PopupMenuItem(value: 'settings', child: Text('Account / Settings')),
-          const PopupMenuItem(value: 'billing', child: Text('Billing')),
-          const PopupMenuItem(value: 'expenses', child: Text('Expenses')),
-          const PopupMenuItem(value: 'recovery', child: Text('Recovery')),
-          const PopupMenuItem(value: 'supplier', child: Text('Supplier Khata')),
-          const PopupMenuItem(value: 'reports', child: Text('Reports')),
-          const PopupMenuItem(value: 'export', child: Text('Export Reports')),
-          const PopupMenuDivider(),
-          PopupMenuItem(value: 'signout', child: Text('Sign Out', style: TextStyle(color: cs.error))),
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: 'settings', child: Text('Account / Settings')),
+          PopupMenuItem(value: 'billing', child: Text('Billing')),
+          PopupMenuItem(value: 'expenses', child: Text('Expenses')),
+          PopupMenuItem(value: 'recovery', child: Text('Recovery')),
+          PopupMenuItem(value: 'supplier', child: Text('Supplier Khata')),
+          PopupMenuItem(value: 'reports', child: Text('Reports')),
+          PopupMenuItem(value: 'export', child: Text('Export Reports')),
+          PopupMenuDivider(),
+          PopupMenuItem(value: 'signout', child: Text('Sign Out')),
         ],
         onSelected: (v) async {
           if (v == 'signout') await authService.signOut();
@@ -124,9 +141,9 @@ class _GreetHeader extends ConsumerWidget {
           else if (v == 'billing') _push(context, const BillingScreen());
           else if (v == 'expenses') _push(context, const ExpenseSheetScreen());
           else if (v == 'recovery') _push(context, const CustomerRecoveryScreen());
-          else if (v == 'supplier') Navigator.push(context, MaterialPageRoute(builder: (_) => const SupplierKhataScreen()));
-          else if (v == 'reports') Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsScreen()));
-          else if (v == 'export') Navigator.push(context, MaterialPageRoute(builder: (_) => const ExportScreen()));
+          else if (v == 'supplier') _push(context, const SupplierKhataScreen());
+          else if (v == 'reports') _push(context, const ReportsScreen());
+          else if (v == 'export') _push(context, const ExportScreen());
         },
       ),
     ]);
@@ -134,46 +151,47 @@ class _GreetHeader extends ConsumerWidget {
 }
 
 class _StatGrid extends StatelessWidget {
-  final dynamic d;
-  const _StatGrid({required this.d});
+  final AccountingSummary summary;
+  const _StatGrid({required this.summary});
 
   @override
   Widget build(BuildContext context) {
     final ac = AppColors.of(context);
+    final s = summary;
     return Column(children: [
       Row(children: [
         Expanded(child: _StatCard(
-          title: 'Revenue', value: 'Rs ${NumberFormat('#,##0').format(d.revenue.toInt())}',
-          sub: 'Gross: Rs ${NumberFormat('#,##0').format(d.grossProfit.toInt())}',
+          title: 'Revenue', value: 'Rs ${NumberFormat('#,##0').format(s.revenue.toInt())}',
+          sub: 'Gross: Rs ${NumberFormat('#,##0').format(s.grossProfit.toInt())}',
           icon: Icons.trending_up_rounded, tint: ac.saleTint, iconColor: ac.saleFg)),
         const SizedBox(width: 10),
         Expanded(child: _StatCard(
-          title: 'COGS', value: 'Rs ${NumberFormat('#,##0').format(d.cogs.toInt())}',
+          title: 'COGS', value: 'Rs ${NumberFormat('#,##0').format(s.cogs.toInt())}',
           sub: 'Cost of goods sold',
           icon: Icons.receipt_rounded, tint: ac.purchaseTint, iconColor: ac.purchaseFg)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
         Expanded(child: _StatCard(
-          title: 'Gross Profit', value: 'Rs ${NumberFormat('#,##0').format(d.grossProfit.toInt())}',
-          sub: 'Revenue \u2212 COGS',
+          title: 'Gross Profit', value: 'Rs ${NumberFormat('#,##0').format(s.grossProfit.toInt())}',
+          sub: 'Revenue − COGS',
           icon: Icons.account_balance_rounded, tint: ac.profitTint, iconColor: ac.profitFg)),
         const SizedBox(width: 10),
         Expanded(child: _StatCard(
-          title: 'Expenses', value: 'Rs ${NumberFormat('#,##0').format(d.totalExpenses.toInt())}',
+          title: 'Expenses', value: 'Rs ${NumberFormat('#,##0').format(s.totalExpenses.toInt())}',
           sub: 'Total kharcha',
           icon: Icons.trending_down_rounded, tint: ac.expenseTint, iconColor: ac.expenseFg)),
       ]),
       const SizedBox(height: 10),
       Row(children: [
         Expanded(child: _StatCard(
-          title: 'Net Profit', value: 'Rs ${NumberFormat('#,##0').format(d.netProfit.toInt())}',
-          sub: 'Margin: ${d.revenue > 0 ? ((d.netProfit / d.revenue) * 100).toStringAsFixed(0) : 0}%',
+          title: 'Net Profit', value: 'Rs ${NumberFormat('#,##0').format(s.netProfit.toInt())}',
+          sub: 'Margin: ${s.revenue > 0 ? ((s.netProfit / s.revenue) * 100).toStringAsFixed(0) : 0}%',
           icon: Icons.trending_up_rounded, tint: ac.profitTint, iconColor: ac.profitFg)),
         const SizedBox(width: 10),
         Expanded(child: _StatCard(
-          title: 'Inventory Value', value: 'Rs ${NumberFormat('#,##0').format(d.inventoryValue.toInt())}',
-          sub: '${d.totalProducts} products',
+          title: 'Inventory Value', value: 'Rs ${NumberFormat('#,##0').format(s.inventoryValue.toInt())}',
+          sub: '${s.totalProducts} products',
           icon: Icons.inventory_2_rounded, tint: ac.inventoryTint, iconColor: ac.inventoryFg)),
       ]),
     ]);
@@ -190,7 +208,6 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final ac = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -207,16 +224,16 @@ class _StatCard extends StatelessWidget {
         const SizedBox(height: 3),
         Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, fontFeatures: const [FontFeature.tabularFigures()], color: cs.onSurface)),
         const SizedBox(height: 3),
-        Text(sub, style: TextStyle(fontSize: 9.5, color: ac.inkFaint)),
+        Text(sub, style: TextStyle(fontSize: 9.5, color: cs.onSurfaceVariant)),
       ]),
     );
   }
 }
 
 class _LowStockAlert extends StatelessWidget {
-  final dynamic d;
+  final int count;
   final VoidCallback? onTap;
-  const _LowStockAlert({required this.d, this.onTap});
+  const _LowStockAlert({required this.count, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +251,7 @@ class _LowStockAlert extends StatelessWidget {
               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(10)),
               child: Icon(Icons.warning_amber_rounded, size: 17, color: ac.purchaseFg)),
           const SizedBox(width: 11),
-          Expanded(child: Text('${d.lowStockCount} ${d.lowStockCount == 1 ? 'item' : 'items'} low on stock',
+          Expanded(child: Text('$count ${count == 1 ? 'item' : 'items'} low on stock',
               style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: ac.purchaseFg))),
           Icon(Icons.chevron_right_rounded, size: 18, color: ac.inkFaint),
         ]),

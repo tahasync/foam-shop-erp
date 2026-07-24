@@ -102,10 +102,10 @@ class BillingScreen extends ConsumerWidget {
               await Printing.sharePdf(bytes: pdfBytes, filename: 'receipt_${sale.id.substring(0, 8)}.pdf');
             }),
       ])));
-    } catch (e) {
+    } catch (e, st) {
       if (context.mounted) {
         final safeMsg = sanitizeErrorMessage(e, fallback: 'Could not generate PDF. Please try again.');
-        logSecureError(e, stack, tag: 'receipt_pdf');
+        logSecureError(e, st, tag: 'receipt_pdf');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(safeMsg), backgroundColor: Theme.of(context).colorScheme.error),
         );

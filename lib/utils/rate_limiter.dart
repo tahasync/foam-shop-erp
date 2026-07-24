@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:io' show Platform;
 
 class RateLimitConfig {
   final int maxAttempts;
@@ -27,8 +28,8 @@ class RateLimitConfig {
   }
 
   static int _envInt(String key, int fallback) {
-    const val = String.fromEnvironment(key);
-    if (val.isEmpty) return fallback;
+    final val = Platform.environment[key];
+    if (val == null || val.isEmpty) return fallback;
     return int.tryParse(val) ?? fallback;
   }
 }
