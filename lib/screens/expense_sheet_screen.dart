@@ -6,6 +6,7 @@ import '../providers/firebase_providers.dart';
 import 'package:intl/intl.dart';
 import '../widgets/save_success_sheet.dart';
 import '../theme/app_theme.dart';
+import '../utils/safe_error_handler.dart';
 
 const _categories = ['Cutting Labor', 'Transport', 'Electricity', 'Packaging', 'Rent', 'Tea / Misc', 'Other'];
 
@@ -90,7 +91,12 @@ class _ExpenseSheetScreenState extends ConsumerState<ExpenseSheetScreen> {
           ]);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load expenses'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
       ),
     );
   }

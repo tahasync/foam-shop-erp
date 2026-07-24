@@ -7,6 +7,7 @@ import '../providers/sale_provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/customer_provider.dart';
 import '../services/receipt_pdf.dart';
+import '../utils/safe_error_handler.dart';
 
 class BillingScreen extends ConsumerWidget {
   const BillingScreen({super.key});
@@ -58,7 +59,12 @@ class BillingScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load billing data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
       ),
     );
   }
@@ -98,8 +104,10 @@ class BillingScreen extends ConsumerWidget {
       ])));
     } catch (e) {
       if (context.mounted) {
+        final safeMsg = sanitizeErrorMessage(e, fallback: 'Could not generate PDF. Please try again.');
+        logSecureError(e, stack, tag: 'receipt_pdf');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF Error: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+          SnackBar(content: Text(safeMsg), backgroundColor: Theme.of(context).colorScheme.error),
         );
       }
     }

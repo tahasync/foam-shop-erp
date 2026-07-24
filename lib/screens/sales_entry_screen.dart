@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../utils/debounce.dart';
 import '../widgets/save_success_sheet.dart';
+import '../utils/safe_error_handler.dart';
 
 class CartWidget extends ConsumerStatefulWidget {
   final CartItem item;
@@ -178,7 +179,9 @@ class _SalesEntryScreenState extends ConsumerState<SalesEntryScreen> {
             final customer = Customer(
                 id: svc.generateId(), name: nc.text.trim(), phone: pc.text.trim());
             Navigator.pop(ctx, customer);
-            svc.addCustomer(customer).catchError((_) {});
+            svc.addCustomer(customer).catchError((e, st) {
+              logSecureError(e, st, tag: 'customer_add');
+            });
           }, child: const Text('Save')),
         ],
       ),
@@ -640,7 +643,13 @@ class _CustomerPickerDialogState extends State<_CustomerPickerDialog> {
               final customersAsync = ref.watch(customersStreamProvider);
               return customersAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load products'),
+                    style: TextStyle(color: cs.onSurface)),
+              ),
+            ),
                 data: (customers) {
                   final filtered = customers.where((c) =>
                       _query.isEmpty || c.name.toLowerCase().contains(_query)).toList();

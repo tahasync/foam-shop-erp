@@ -17,7 +17,10 @@ class SaleLineItem {
     required this.salePrice,
     this.lineDiscountAmount = 0,
     this.costPriceAtSale = 0,
-  });
+  }) : assert(productId.trim().isNotEmpty, 'Line item must have a product ID'),
+       assert(qtyOrArea > 0, 'Quantity must be positive'),
+       assert(salePrice >= 0, 'Price cannot be negative'),
+       assert(lineDiscountAmount >= 0, 'Discount cannot be negative');
 
   double get lineTotal => (qtyOrArea * salePrice) - lineDiscountAmount;
 
@@ -32,16 +35,26 @@ class SaleLineItem {
         'cost_price_at_sale': costPriceAtSale,
       };
 
-  factory SaleLineItem.fromMap(Map<String, dynamic> map) => SaleLineItem(
-        productId: map['product_id'] as String,
-        name: map['name'] as String?,
-        customLength: (map['custom_length'] as num?)?.toDouble(),
-        customWidth: (map['custom_width'] as num?)?.toDouble(),
-        qtyOrArea: (map['qty_or_area'] as num).toDouble(),
-        salePrice: (map['sale_price'] as num).toDouble(),
-        lineDiscountAmount: (map['line_discount_amount'] as num?)?.toDouble() ?? 0,
-        costPriceAtSale: (map['cost_price_at_sale'] as num?)?.toDouble() ?? 0,
-      );
+  factory SaleLineItem.fromMap(Map<String, dynamic> map) {
+    final productId = map['product_id'];
+    if (productId is! String || productId.trim().isEmpty) {
+      throw const FormatException('Invalid sale line item: missing product_id');
+    }
+    final qtyOrArea = map['qty_or_area'];
+    if (qtyOrArea == null || (qtyOrArea is! num) || qtyOrArea.toDouble() <= 0) {
+      throw const FormatException('Invalid sale line item: qty_or_area must be positive');
+    }
+    return SaleLineItem(
+      productId: productId.trim(),
+      name: map['name'] as String?,
+      customLength: (map['custom_length'] as num?)?.toDouble(),
+      customWidth: (map['custom_width'] as num?)?.toDouble(),
+      qtyOrArea: (qtyOrArea as num).toDouble(),
+      salePrice: ((map['sale_price'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
+      lineDiscountAmount: ((map['line_discount_amount'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
+      costPriceAtSale: ((map['cost_price_at_sale'] as num?)?.toDouble() ?? 0).clamp(0, 1e9),
+    );
+  }
 }
 
 class Sale {
@@ -75,7 +88,9 @@ class Sale {
     this.voidReason,
     this.isQuote = false,
     this.transactionUuid,
-  });
+  }) : assert(id.trim().isNotEmpty, 'Sale ID is required'),
+       assert(lineItems.isNotEmpty, 'Sale must have at least one line item'),
+       assert(paid >= 0, 'Paid amount cannot be negative');
 
   double get subtotal => lineItems.fold(0.0, (s, li) => s + li.lineTotal);
   double get totalDiscount => discountAmount ?? (subtotal * (discountPercent ?? 0) / 100);

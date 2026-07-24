@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../providers/auth_provider.dart';
+import '../utils/safe_error_handler.dart';
 
 class SignInScreen extends ConsumerWidget {
   const SignInScreen({super.key});
@@ -48,9 +49,11 @@ class SignInScreen extends ConsumerWidget {
                     }
                   } catch (e) {
                     if (context.mounted) {
+                      final safeMsg = sanitizeErrorMessage(e, fallback: 'Sign in failed. Please try again.');
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Sign in failed: $e'), backgroundColor: Theme.of(context).colorScheme.error),
+                        SnackBar(content: Text(safeMsg), backgroundColor: Theme.of(context).colorScheme.error),
                       );
+                      logSecureError(e, StackTrace.current, tag: 'auth');
                     }
                   }
                 },

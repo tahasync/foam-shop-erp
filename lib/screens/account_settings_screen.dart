@@ -4,6 +4,7 @@ import '../models/opening_balance.dart';
 import '../providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/theme_provider.dart';
+import '../utils/safe_error_handler.dart';
 
 class AccountSettingsScreen extends ConsumerWidget {
   const AccountSettingsScreen({super.key});
@@ -131,7 +132,9 @@ class AccountSettingsScreen extends ConsumerWidget {
             if (ctx.mounted) Navigator.pop(ctx);
           } catch (e) {
             if (ctx.mounted) {
-              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Save failed: $e'), backgroundColor: Theme.of(ctx).colorScheme.error));
+              final safeMsg = sanitizeErrorMessage(e, fallback: 'Could not save opening balance.');
+              logSecureError(e, stack, tag: 'opening_balance');
+              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(safeMsg), backgroundColor: Theme.of(ctx).colorScheme.error));
             }
           }
         }, child: const Text('Save')),

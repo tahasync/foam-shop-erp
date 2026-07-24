@@ -11,6 +11,7 @@ import '../providers/dashboard_provider.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../widgets/save_success_sheet.dart';
+import '../utils/safe_error_handler.dart';
 
 class CustomerRecoveryScreen extends ConsumerStatefulWidget {
   const CustomerRecoveryScreen({super.key});
@@ -72,13 +73,28 @@ class _CustomerRecoveryScreenState extends ConsumerState<CustomerRecoveryScreen>
       ),
       body: customersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
         data: (csList) => salesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+          error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
           data: (sales) => paymentsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+            error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
             data: (payments) {
               final withBaqaya = csList
                   .where((c) => _searchQuery.isEmpty || c.name.toLowerCase().contains(_searchQuery))

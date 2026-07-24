@@ -11,6 +11,7 @@ import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/debounce.dart';
 import '../widgets/scale_button.dart';
+import '../utils/safe_error_handler.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   final bool initialLowStockFilter;
@@ -71,7 +72,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
       body: productsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load inventory'),
+                    style: TextStyle(color: cs.onSurface)),
+              ),
+            ),
         data: (products) {
           final query = _searchCtrl.text.toLowerCase();
           var filtered = products.where((p) {
@@ -193,13 +200,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   void _addProduct() {
     _AddProductDialog.show(context, (Product product) {
       final svc = ref.read(firestoreServiceProvider);
-      svc.addProduct(product.copyWith(id: svc.generateId())).catchError((_) {});
+      svc.addProduct(product.copyWith(id: svc.generateId())).catchError((e, st) {
+              logSecureError(e, st, tag: 'product_add');
+            });
     });
   }
 
   void _edit(Product product) {
     _EditProductDialog.show(context, product, (Product updated) {
-      ref.read(firestoreServiceProvider).updateProduct(updated).catchError((_) {});
+      ref.read(firestoreServiceProvider).updateProduct(updated).catchError((e, st) {
+            logSecureError(e, st, tag: 'product_update');
+          });
     });
   }
 
@@ -575,7 +586,9 @@ class RestockDialog extends StatefulWidget {
                 final paid = double.tryParse(paidCtrl.text) ?? 0;
                 Navigator.of(ctx).pop();
                 FirestoreService().restockTransaction(product.id, q, uc, paid, supplierId: supplierId)
-                    .catchError((_) {});
+                    .catchError((e, st) {
+                      logSecureError(e, st, tag: 'restock');
+                    });
               },
               icon: const Icon(Icons.add_shopping_cart_rounded),
               label: const Text('Restock'),

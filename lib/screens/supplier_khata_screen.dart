@@ -7,6 +7,7 @@ import '../providers/purchase_provider.dart';
 import '../providers/supplier_payment_provider.dart';
 import '../providers/firebase_providers.dart';
 import '../theme/app_theme.dart';
+import '../utils/safe_error_handler.dart';
 
 class SupplierKhataScreen extends ConsumerWidget {
   const SupplierKhataScreen({super.key});
@@ -102,7 +103,9 @@ class SupplierKhataScreen extends ConsumerWidget {
           if (nc.text.trim().isEmpty) return;
           final supplier = Supplier(id: ref.read(firestoreServiceProvider).generateId(), name: nc.text.trim(), phone: pc.text.trim());
           Navigator.of(ctx).pop();
-          ref.read(firestoreServiceProvider).addSupplier(supplier).catchError((_) {});
+          ref.read(firestoreServiceProvider).addSupplier(supplier).catchError((e, st) {
+          logSecureError(e, st, tag: 'supplier_add');
+        });
         }, child: const Text('Save')),
       ],
     )).whenComplete(() { nc.dispose(); pc.dispose(); });
@@ -225,9 +228,19 @@ class _SupDetail extends ConsumerWidget {
                     )),
             ]);
           }, loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+          error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
         ), loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
       ),
     );
   }

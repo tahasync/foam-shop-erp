@@ -1,12 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
-const String _webClientId =
-    'REPLACED_PROJECT_NUM-tpcotlb0ndrhoscv2a20dtu2pqtibqui.apps.googleusercontent.com';
+import '../firebase_options.dart';
+import '../utils/rate_limiter.dart';
+import '../utils/safe_error_handler.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   GoogleSignIn? _googleSignIn;
+  final RateLimiter _rateLimiter = RateLimiter(
+    config: const RateLimitConfig(
+      maxAttempts: 5,
+      window: Duration(minutes: 1),
+      cooldown: Duration(minutes: 5),
+    ),
+  );
 
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -14,9 +21,14 @@ class AuthService {
 
   Future<void> initialize() async {
     _googleSignIn = GoogleSignIn.instance;
-    await _googleSignIn!.initialize(
-      serverClientId: _webClientId,
-    );
+    final clientId = DefaultFirebaseOptions.webClientId;
+    if (clientId.isEmpty) {
+      throw AssertionError(
+        'FIREBASE_WEB_CLIENT_ID is not set. '
+        'Build with: flutter run --dart-define-from-file=env/firebase_config.json',
+      );
+    }
+    await _googleSignIn!.initialize(serverClientId: clientId);
   }
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -24,6 +36,16 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   Future<UserCredential> signInWithGoogle() async {
+    final deviceId = _auth.currentUser?.uid;
+    final result = _rateLimiter.attempt(deviceId: 'device_sign_in', accountId: deviceId);
+    if (!result.allowed) {
+      logSecureError(
+        RateLimitError(result.reason ?? 'Rate limit exceeded'),
+        null,
+        tag: 'auth',
+      );
+      throw result.reason ?? 'Too many attempts. Please wait.';
+    }
     final GoogleSignInAccount account =
         await _googleSignIn!.authenticate();
     final GoogleSignInAuthentication auth = account.authentication;
@@ -32,6 +54,7 @@ class AuthService {
       idToken: auth.idToken,
     );
 
+    _rateLimiter.reset(deviceId: 'device_sign_in', accountId: deviceId);
     return await _auth.signInWithCredential(credential);
   }
 
@@ -43,4 +66,11 @@ class AuthService {
   }
 
   String? get userId => _auth.currentUser?.uid;
+}
+
+class RateLimitError implements Exception {
+  final String message;
+  const RateLimitError(this.message);
+  @override
+  String toString() => message;
 }

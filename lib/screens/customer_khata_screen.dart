@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../widgets/torn_receipt_card.dart';
 import '../widgets/save_success_sheet.dart';
+import '../utils/safe_error_handler.dart';
 
 class CustomerKhataScreen extends ConsumerWidget {
   const CustomerKhataScreen({super.key});
@@ -236,10 +237,20 @@ class _CustDetail extends ConsumerWidget {
           );
         },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+          error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e', style: TextStyle(color: cs.onSurface))),
+        error: (e, _) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(sanitizeErrorMessage(e, fallback: 'Could not load data'),
+                    style: TextStyle(color: cs.onSurface))),
+            ),
       ),
     );
   }
@@ -294,7 +305,9 @@ void _collectPayment(BuildContext context, WidgetRef ref, Customer customer, {do
               onNew: () {},
             );
           }
-        }).catchError((_) {});
+        }).catchError((e, st) {
+          logSecureError(e, st, tag: 'payment');
+        });
       }, child: const Text('Save')),
     ],
   )).then((_) => ctrl.dispose());

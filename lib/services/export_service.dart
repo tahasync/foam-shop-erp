@@ -17,6 +17,15 @@ class ExportService {
   String _fmt(double v) => 'Rs ${_numberFmt.format(v)}';
   String _fmtRaw(double v) => v.toStringAsFixed(0);
 
+  static String _sanitizeCsvCell(String value) {
+    if (value.isEmpty) return value;
+    final first = value.codeUnitAt(0);
+    if (first == 0x3D || first == 0x2B || first == 0x2D || first == 0x40) {
+      return '\'$value';
+    }
+    return value;
+  }
+
   bool _isSingleDay(DateTime start, DateTime end) =>
       start.year == end.year && start.month == end.month && start.day == end.day;
 
@@ -66,7 +75,7 @@ class ExportService {
       rows.add([
         _dateFmt.format(sale.date),
         sale.id.substring(0, 8),
-        items,
+        _sanitizeCsvCell(items),
         _fmtRaw(sale.amount),
         _fmtRaw(cogs),
         _fmtRaw(sale.amount - cogs),

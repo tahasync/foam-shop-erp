@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.replaced"
+    namespace = "com.asif.foamshop"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -18,7 +18,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.replaced"
+        applicationId = "com.asif.foamshop"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
