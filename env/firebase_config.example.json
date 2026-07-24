@@ -11,5 +11,6 @@
   "FIREBASE_IOS_STORAGE_BUCKET": "your-project-id.firebasestorage.app",
   "FIREBASE_IOS_ANDROID_CLIENT_ID": "123456789-xxxx.apps.googleusercontent.com",
   "FIREBASE_IOS_CLIENT_ID": "123456789-xxxx.apps.googleusercontent.com",
-  "FIREBASE_IOS_BUNDLE_ID": "com.example.app"
+  "FIREBASE_IOS_BUNDLE_ID": "com.example.app",
+  "FIREBASE_WEB_CLIENT_ID": "123456789-xxxx.apps.googleusercontent.com"
 }

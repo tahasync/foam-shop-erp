@@ -28,16 +28,35 @@ jobs:
           architecture: x64
           cache: true
 
-      - name: Decode Firebase Config
-        run: echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+      - name: Decode Firebase google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" | base64 --decode > android/app/google-services.json
+          echo "::notice ::Package names in google-services.json:"
+          grep -o '"package_name"[[:space:]]*:[[:space:]]*"[^"]*"' android/app/google-services.json || echo "  (no android client entries found)"
 
-      - name: Write Firebase Config
+      - name: Write Firebase dart-define config
         run: |
           mkdir -p env
-          echo '${{ secrets.FIREBASE_CONFIG_JSON }}' > env/firebase_config.json
+          cat > env/firebase_config.json << 'FIREOF'
+          ${{ secrets.FIREBASE_CONFIG_JSON }}
+          FIREOF
+          echo "::notice ::firebase_config.json fields:"
+          grep -o '"[A-Z_]*"' env/firebase_config.json | head -20
 
       - name: Decode Release Keystore
-        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+          echo "::notice ::Keystore decoded ($(wc -c < android/app/release.keystore) bytes)"
+
+      - name: Validate google-services.json matches applicationId
+        run: |
+          APP_ID="com.asif.foamshop"
+          if grep -q "\"$APP_ID\"" android/app/google-services.json; then
+            echo "::notice ::google-services.json contains client for $APP_ID — OK"
+          else
+            echo "::error ::google-services.json has NO client for $APP_ID — update GOOGLE_SERVICES_JSON secret"
+            exit 1
+          fi
 
       - name: Inject Version & Build Universal APK
         run: |
