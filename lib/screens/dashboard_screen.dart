@@ -46,7 +46,7 @@ class DashboardScreen extends ConsumerWidget {
           child: ListView(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 96 + bottom),
             children: [
-              _GreetHeader(slipNumber: slipNumber),
+              const _GreetHeader(),
               const SizedBox(height: 16),
               TornReceiptCard(
                 label: 'Cash in Hand',
@@ -75,8 +75,7 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _GreetHeader extends ConsumerWidget {
-  final String slipNumber;
-  const _GreetHeader({required this.slipNumber});
+  const _GreetHeader();
 
   static final _dateStr = _GreetHeader._formatDate();
 
@@ -124,16 +123,16 @@ class _GreetHeader extends ConsumerWidget {
           backgroundImage: user != null && user.photoURL != null ? NetworkImage(user.photoURL!) : null,
           child: user?.photoURL == null ? const Icon(Icons.person_rounded, size: 18) : null,
         ),
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'settings', child: Text('Account / Settings')),
-          PopupMenuItem(value: 'billing', child: Text('Billing')),
-          PopupMenuItem(value: 'expenses', child: Text('Expenses')),
-          PopupMenuItem(value: 'recovery', child: Text('Recovery')),
-          PopupMenuItem(value: 'supplier', child: Text('Supplier Khata')),
-          PopupMenuItem(value: 'reports', child: Text('Reports')),
-          PopupMenuItem(value: 'export', child: Text('Export Reports')),
-          PopupMenuDivider(),
-          PopupMenuItem(value: 'signout', child: Text('Sign Out')),
+        itemBuilder: (_) => [
+          const PopupMenuItem(value: 'settings', child: Text('Account / Settings')),
+          const PopupMenuItem(value: 'billing', child: Text('Billing')),
+          const PopupMenuItem(value: 'expenses', child: Text('Expenses')),
+          const PopupMenuItem(value: 'recovery', child: Text('Recovery')),
+          const PopupMenuItem(value: 'supplier', child: Text('Supplier Khata')),
+          const PopupMenuItem(value: 'reports', child: Text('Reports')),
+          const PopupMenuItem(value: 'export', child: Text('Export Reports')),
+          const PopupMenuDivider(),
+          PopupMenuItem(value: 'signout', child: Text('Sign Out', style: TextStyle(color: cs.error))),
         ],
         onSelected: (v) async {
           if (v == 'signout') await authService.signOut();

@@ -60,17 +60,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final cs = Theme.of(context).colorScheme;
 
+    final screens = <Widget>[
+      DashboardScreen(onLowStockTap: _goToInventory),
+      const SalesEntryScreen(),
+      InventoryScreen(
+        initialLowStockFilter: _invLowStockFilter,
+        highlightProductId: _invHighlightId,
+      ),
+      const CustomerKhataScreen(),
+    ];
+
     return Scaffold(
       extendBody: true,
-      body: IndexedStack(
-        index: _tab,
-        children: const [
-          DashboardScreen(),
-          SalesEntryScreen(),
-          InventoryScreen(),
-          CustomerKhataScreen(),
-        ],
-      ),
+      body: screens[_tab],
       bottomNavigationBar: Container(
         color: Colors.transparent,
         child: SafeArea(
