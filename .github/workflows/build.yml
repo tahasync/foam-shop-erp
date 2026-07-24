@@ -38,9 +38,7 @@ jobs:
       - name: Write Firebase dart-define config
         run: |
           mkdir -p env
-          cat > env/firebase_config.json << 'FIREOF'
-          ${{ secrets.FIREBASE_CONFIG_JSON }}
-          FIREOF
+          printf '%s' '${{ secrets.FIREBASE_CONFIG_JSON }}' > env/firebase_config.json
           echo "::notice ::firebase_config.json fields:"
           grep -o '"[A-Z_]*"' env/firebase_config.json | head -20
 
