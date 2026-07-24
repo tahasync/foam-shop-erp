@@ -67,6 +67,8 @@ Desktop.ini
 service_account.json
 google-services.json
 GoogleService-Info.plist
+env/
+!env/.gitkeep
 
 # Temp
 migrate_working_dir/
