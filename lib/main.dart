@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,6 +63,16 @@ void main() {
   });
 }
 
+bool get _isEmulator {
+  if (!Platform.isAndroid) return false;
+  try {
+    return Platform.environment['ANDROID_EMULATOR'] == '1' ||
+           Platform.environment['ANDROID_SERIAL']?.contains('emulator') == true;
+  } catch (_) {
+    return false;
+  }
+}
+
 Future<void> _initBackgroundServices() async {
   try {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
@@ -70,7 +81,9 @@ Future<void> _initBackgroundServices() async {
       FirebaseCrashlytics.instance.recordError(error, stack);
       return true;
     };
-    await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+    if (!_isEmulator) {
+      await FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+    }
   } catch (_) {
   }
 }
